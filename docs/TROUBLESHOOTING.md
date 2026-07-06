@@ -1,0 +1,147 @@
+# Troubleshooting
+
+## Database credentials not configured
+
+**Symptom:** Public or admin pages fail with a database connection error.
+
+**Root cause:** `DB_HOST`, `DB_NAME`, `DB_USER`, or `DB_PASS` are missing or incorrect, and defaults do not match the server.
+
+**Solution:** Set the correct environment variables in the server/hosting environment.
+
+**Lesson learned:** Confirm database credentials before testing application behavior.
+
+## Database schema not imported
+
+**Symptom:** Errors mention missing tables such as `portfolio_projects` or `admin_users`.
+
+**Root cause:** `database/portfolio_schema.sql` has not been imported into the configured database.
+
+**Solution:** Run:
+
+```bash
+mysql -u YOUR_USER -p YOUR_DATABASE < database/portfolio_schema.sql
+```
+
+**Lesson learned:** Schema import is required before first use.
+
+## Upload folder not writable
+
+**Symptom:** Image uploads fail with a save error.
+
+**Root cause:** The web server cannot write to `uploads/portfolio/`.
+
+**Solution:** Set ownership/permissions for the web server user.
+
+**Lesson learned:** Upload paths need writable permissions after deployment.
+
+## Admin setup says setup complete
+
+**Symptom:** `/admin/setup.php` says “Setup is already complete.”
+
+**Root cause:** At least one row already exists in `admin_users`.
+
+**Solution:** Use `/admin/login.php`. If credentials are lost, recover through a controlled database/admin reset process after backing up data.
+
+**Lesson learned:** Setup is intentionally one-time only.
+
+## Uploaded images not appearing
+
+**Symptom:** Image upload succeeds but images do not display publicly.
+
+**Root cause:** Possible causes include incorrect file permissions, missing file, wrong relative path, unpublished project, or viewing a page section that does not display that image type.
+
+**Solution:** Check the database image path, confirm the file exists under `uploads/portfolio/`, confirm web server read permissions, and confirm the project is published.
+
+**Lesson learned:** Image display depends on database path, filesystem file, permissions, and project visibility.
+
+## Live website links not working
+
+**Symptom:** Live site button is missing or link fails.
+
+**Root cause:** `live_url` may be empty or not a full valid URL.
+
+**Solution:** Edit the project and enter a full URL including `https://`.
+
+**Lesson learned:** The admin form expects a complete URL.
+
+## Public pages showing empty states
+
+**Symptom:** Website Builds or Shopify Make-Overs page says portfolio is coming soon.
+
+**Root cause:** No published projects exist for that section, or projects are still drafts.
+
+**Solution:** In admin, create projects and set status to Published.
+
+**Lesson learned:** Public listings intentionally hide drafts.
+
+## Lightbox not opening
+
+**Symptom:** Clicking a project image does nothing.
+
+**Root cause:** `assets/js/portfolio.js` may not be loading, or the image element may not have `data-lightbox-src`.
+
+**Solution:** Confirm the JS file loads in browser dev tools and confirm project detail images render with lightbox data attributes.
+
+**Lesson learned:** Lightbox is vanilla JavaScript and depends on the expected data attributes.
+
+## Unpublished project not visible publicly
+
+**Symptom:** `/project.php?slug=...` shows “Project not found” for a known project.
+
+**Root cause:** The project status is `draft` or the slug is incorrect.
+
+**Solution:** Publish the project or verify the slug in the admin edit page.
+
+**Lesson learned:** Draft content is intentionally blocked from public access.
+
+## Request form says submitted but no request appears
+
+**Symptom:** A request submission shows success but no request appears in admin.
+
+**Root cause:** The hidden honeypot field may have been filled by a bot or browser autofill.
+
+**Solution:** Confirm the visible form fields are used and the hidden `website_url_confirm` field remains blank.
+
+**Lesson learned:** Honeypot submissions intentionally do not save data but avoid showing spam-specific errors.
+
+## FAQ page is empty
+
+**Symptom:** `/faq.php` shows an empty state.
+
+**Root cause:** No FAQs are published, or the schema seed statements have not been imported.
+
+**Solution:** Import the updated schema or create/publish FAQs in the admin panel.
+
+**Lesson learned:** Public FAQ output only uses published FAQ rows.
+
+
+## Request form shows length validation errors
+
+**Symptom:** The website request form asks you to shorten a field.
+
+**Root cause:** A varchar-backed field is longer than the database column allows.
+
+**Solution:** Shorten the named field and put longer details in the project description, inspiration links, or notes fields.
+
+**Lesson learned:** Short contact/classification fields have database-sized limits, while project detail fields allow longer text.
+
+## FAQ schema is missing
+
+**Symptom:** The FAQ page loads but no FAQPage JSON-LD appears.
+
+**Root cause:** There are no published FAQ rows visible on the FAQ page.
+
+**Solution:** Publish at least one FAQ in the admin FAQ manager.
+
+**Lesson learned:** FAQ schema is generated only for visible published FAQs.
+
+
+## Missing table errors for FAQs or website requests
+
+**Symptom:** The homepage, FAQ page, request page, or admin dashboard fails with a missing table error for `faqs` or `website_requests`.
+
+**Root cause:** Updated service/request/FAQ code is running before the expanded schema was imported or applied.
+
+**Solution:** Import or apply the updated schema, confirm all six current tables exist, then reload the page.
+
+**Lesson learned:** Schema updates must be applied before loading or testing code that queries new tables.
