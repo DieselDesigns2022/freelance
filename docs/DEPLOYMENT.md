@@ -43,7 +43,7 @@ For first deployment, import:
 mysql -u YOUR_USER -p YOUR_DATABASE < database/portfolio_schema.sql
 ```
 
-The schema creates:
+The schema creates these current tables for fresh installs:
 
 - `admin_users`
 - `portfolio_projects`
@@ -51,13 +51,17 @@ The schema creates:
 - `portfolio_before_after_pairs`
 - `website_requests`
 - `faqs`
+- `contract_templates`
+- `products`
+- `orders`
+- `contract_instances`
 
 
 ## Schema-Before-Code Requirement
 
 For first deployment, import the full `database/portfolio_schema.sql` before testing the site. For existing deployments, apply the new `website_requests` and `faqs` table definitions and FAQ seed statements before deploying or loading the expanded service/request/FAQ code.
 
-If the updated code is loaded before the schema is updated, pages that query `faqs` or `website_requests` may fail with missing-table database errors. This affects the homepage FAQ preview, FAQ page, request page, admin dashboard, admin request pages, and admin FAQ pages.
+If the updated code is loaded before the schema is updated, pages that query `faqs` or `website_requests` may fail with missing-table database errors. This affects the homepage FAQ preview, FAQ page, request page, admin dashboard, admin request pages, and admin FAQ pages. Phase 2 storefront and admin order pages also require the Phase 2 migration before use; missing `products`, `contract_templates`, `orders`, or `contract_instances` tables can break store and admin order pages. Existing deployments should run `database/migrations/20260710_phase_2_store_contract_system.sql` before testing the Phase 2 storefront/contract system.
 
 ## Environment / Database Credential Setup
 
@@ -147,3 +151,15 @@ No deployment has been performed in this workflow.
 ## Schema Updates for Services Expansion
 
 The canonical schema file now also creates `website_requests` and `faqs`, and seeds general starter FAQs. Existing deployments need the new table definitions and FAQ seed statements applied before using request or FAQ features.
+
+## Phase 2 Deployment Notes
+
+Run the additive migration after deploying the code:
+
+```bash
+mysql -u <user> -p <database> < database/migrations/20260710_phase_2_store_contract_system.sql
+```
+
+After migration, create at least one active contract template in admin, then assign an active contract template to each product that should be purchasable. Public purchase is blocked for active products without an active contract template.
+
+There is no payment gateway deployment step in Phase 2. Payment status is managed manually in admin. Signed contract downloads are HTML, so no PDF service or Composer dependency is required.

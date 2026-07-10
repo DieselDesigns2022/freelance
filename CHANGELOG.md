@@ -39,3 +39,10 @@
 ### Major Fixes
 
 - Documented that request submissions are stored for admin review and no email sending is implemented.
+
+## Phase 2 — Storefront Purchases & Contract Signing System
+
+- Added public store, product detail, purchase/order-start, contract signing, and signed contract copy routes.
+- Added admin CRUD for products and contract templates plus order management, manual payment status controls, contract sent/viewed/signed tracking, token regeneration before signing, and signed-contract HTML downloads.
+- Added additive database tables for products, contract templates, orders, and contract instances.
+- Kept payment handling manual; no payment gateway or PDF dependency was added.

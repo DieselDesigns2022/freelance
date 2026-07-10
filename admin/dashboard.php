@@ -23,6 +23,15 @@ foreach (['new', 'reviewing', 'contacted', 'quoted'] as $status) {
 
 $recent = db()->query('SELECT * FROM portfolio_projects ORDER BY created_at DESC LIMIT 5')->fetchAll();
 $recentRequests = db()->query('SELECT * FROM website_requests ORDER BY created_at DESC LIMIT 5')->fetchAll();
+$orderCounts = ['pending'=>0,'awaiting_signature'=>0,'signed'=>0,'payment_pending'=>0];
+$recentOrders = [];
+if (table_exists(db(), 'orders')) {
+    $orderCounts['pending'] = db()->query("SELECT COUNT(*) FROM orders WHERE order_status IN ('pending_contract','contract_sent')")->fetchColumn();
+    $orderCounts['awaiting_signature'] = db()->query("SELECT COUNT(*) FROM orders WHERE contract_status IN ('pending','sent','viewed')")->fetchColumn();
+    $orderCounts['signed'] = db()->query("SELECT COUNT(*) FROM orders WHERE contract_status='signed'")->fetchColumn();
+    $orderCounts['payment_pending'] = db()->query("SELECT COUNT(*) FROM orders WHERE payment_status='pending'")->fetchColumn();
+    $recentOrders = db()->query('SELECT * FROM orders ORDER BY created_at DESC LIMIT 5')->fetchAll();
+}
 $adminTitle = 'Dashboard';
 
 include __DIR__ . '/includes/admin-header.php';
@@ -37,12 +46,22 @@ include __DIR__ . '/includes/admin-header.php';
     <article><b><?= $requestCounts['reviewing'] ?></b><span>Reviewing Requests</span></article>
     <article><b><?= $requestCounts['contacted'] ?></b><span>Contacted Requests</span></article>
     <article><b><?= $requestCounts['quoted'] ?></b><span>Quoted Requests</span></article>
+    <article><b><?= $orderCounts['pending'] ?></b><span>Pending Orders</span></article>
+    <article><b><?= $orderCounts['awaiting_signature'] ?></b><span>Contracts Awaiting Signature</span></article>
+    <article><b><?= $orderCounts['signed'] ?></b><span>Signed Contracts</span></article>
+    <article><b><?= $orderCounts['payment_pending'] ?></b><span>Manual Payment Pending</span></article>
 </div>
 <p>
     <a class="btn" href="projects-create.php">Add New Project</a>
     <a class="btn" href="requests.php">Manage Requests</a>
+    <a class="btn" href="products.php">Manage Products</a>
+    <a class="btn" href="orders.php">Manage Orders</a>
     <a class="btn btn-ghost" href="../index.php">View Public Site</a>
 </p>
+<section class="admin-card">
+    <h2>Recent Orders</h2>
+    <?php if ($recentOrders): ?><ul><?php foreach ($recentOrders as $order): ?><li><a href="order-view.php?id=<?= (int) $order['id'] ?>"><?= e($order['order_number']) ?></a> — <?= e($order['customer_name']) ?> / <?= e($order['order_status']) ?> / <?= e($order['payment_status']) ?></li><?php endforeach; ?></ul><?php else: ?><p>No orders yet.</p><?php endif; ?>
+</section>
 <section class="admin-card">
     <h2>Recent Website Requests</h2>
     <?php if ($recentRequests): ?><ul><?php foreach ($recentRequests as $request): ?><li><a href="request-view.php?id=<?= (int) $request['id'] ?>"><?= e($request['name']) ?></a> — <?= e($request['project_type']) ?> / <?= e($request['status']) ?></li><?php endforeach; ?></ul><?php else: ?><p>No website requests yet.</p><?php endif; ?>

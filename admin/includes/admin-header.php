@@ -20,6 +20,9 @@ $currentAdmin = admin_user();
         <?php if ($currentAdmin): ?>
             <a href="dashboard.php">Dashboard</a>
             <a href="projects.php">Projects</a>
+            <a href="products.php">Products</a>
+            <a href="contract-templates.php">Contract Templates</a>
+            <a href="orders.php">Orders</a>
             <a href="requests.php">Requests</a>
             <a href="faqs.php">FAQs</a>
             <a href="projects-create.php">Add Project</a>
