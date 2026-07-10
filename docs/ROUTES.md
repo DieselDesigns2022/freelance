@@ -53,3 +53,30 @@ The app uses direct PHP files instead of a front controller.
 | GET/POST | `/admin/faqs.php` | `admin/faqs.php` | Yes | Lists FAQs, toggles status, and deletes FAQs. |
 | GET/POST | `/admin/faqs-create.php` | `admin/faqs-create.php` | Yes | Creates FAQs. |
 | GET/POST | `/admin/faqs-edit.php?id=...` | `admin/faqs-edit.php` | Yes | Edits or deletes FAQs. |
+
+## Phase 2 Public Routes
+
+| Method | Route | Auth | Purpose |
+| --- | --- | --- | --- |
+| GET | `/store.php` | No | Lists active purchasable products/services. |
+| GET | `/product-service.php?slug=...` | No | Shows an active product/service detail page with service schema. |
+| GET/POST | `/purchase.php?product=...` | No | Validates customer details, creates an order, snapshots product/template details, and generates a contract instance. |
+| GET/POST | `/sign-contract.php?token=...` | Token | Shows and signs one contract instance by secure token. |
+| GET | `/contract-copy.php?token=...` | Token | Shows a pending state or printable signed contract copy. |
+| GET | `/contract-copy.php?token=...&download=1` | Token | Downloads signed contract HTML only after signature. |
+
+## Phase 2 Admin Routes
+
+| Method | Route | Auth | Purpose |
+| --- | --- | --- | --- |
+| GET/POST | `/admin/products.php` | Admin | Lists products and archives products. |
+| GET/POST | `/admin/products-create.php` | Admin | Creates products with server-side validation. |
+| GET/POST | `/admin/products-edit.php?id=...` | Admin | Edits products with server-side validation. |
+| GET | `/admin/contract-templates.php` | Admin | Lists contract templates. |
+| GET/POST | `/admin/contract-templates-create.php` | Admin | Creates contract templates with server-side validation. |
+| GET/POST | `/admin/contract-templates-edit.php?id=...` | Admin | Edits contract templates with server-side validation. |
+| GET | `/admin/contract-template-preview.php?id=...` | Admin | Renders a template preview with sample placeholder data. |
+| GET | `/admin/orders.php` | Admin | Lists customer orders and contract/payment statuses. |
+| GET/POST | `/admin/order-view.php?id=...` | Admin | Views order details, updates manual statuses, marks sent, voids unsigned contracts, and generates replacement signing links. |
+| GET | `/admin/contract-copy.php?id=...` | Admin | Views printable signed contract copy. |
+| GET | `/admin/contract-copy.php?id=...&download=1` | Admin | Downloads signed contract HTML only after signature. |

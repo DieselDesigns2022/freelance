@@ -131,3 +131,13 @@ Expand the portfolio into a lead-generating service website for website builds, 
 ### Deployment Status
 
 Not deployed. Updated schema must be imported before request and FAQ features are used.
+
+## Phase 2 — Storefront Purchases & Contract Signing System
+
+Objective: expand the site from a portfolio/request site into a basic storefront for service packages with per-order contract signing.
+
+Implemented: public store/product/purchase/signing/copy routes; admin product CRUD; admin contract template CRUD and preview; admin order management; manual order/payment status controls; token regeneration before signing; contract status tracking; signed HTML contract downloads.
+
+Database changes: added `products`, `contract_templates`, `orders`, and `contract_instances` through `database/migrations/20260710_phase_2_store_contract_system.sql` and updated the canonical schema.
+
+Limitations: no live payment gateway, no PDF generation library, no public order listing, and raw signing tokens cannot be recovered after creation because only token hashes are stored. Deployment requires running the migration and creating/assigning active contract templates before products can be purchased publicly.

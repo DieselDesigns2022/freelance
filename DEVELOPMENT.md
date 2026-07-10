@@ -24,12 +24,23 @@ The app is a simple page-controller PHP application. Each public or admin URL ma
 - `faq.php`: published FAQ page with FAQPage JSON-LD for visible FAQs.
 - `request-website.php`: public website build/revamp request form with CSRF, validation, honeypot, and database storage.
 
+### Phase 2 Public Store and Contract Routes
+
+- `/store.php`: lists active purchasable services/products.
+- `/product-service.php?slug=...`: shows an active product/service detail page.
+- `/purchase.php?product=...`: public order-start form that validates customer details, creates an order, snapshots product/template data, and creates a contract instance. Public purchase is blocked when the selected product lacks an active assigned contract template.
+- `/sign-contract.php?token=...`: secure token-based contract signing page.
+- `/contract-copy.php?token=...`: secure token-based contract copy view.
+- `/contract-copy.php?token=...&download=1`: signed-only HTML contract download.
+
+Token routes are private by token and marked noindex. Payment handling is manual only in Phase 2; no live payment gateway is implemented.
+
 ## Admin Pages
 
 - `admin/setup.php`: creates the first admin only when zero admins exist.
 - `admin/login.php`: authenticates admins.
 - `admin/logout.php`: destroys the admin session.
-- `admin/dashboard.php`: shows project counts, request counts, recent requests, and recent projects.
+- `admin/dashboard.php`: shows project/request counts, Phase 2 pending order count, contracts awaiting signature, signed contracts, manual payment pending count, recent orders, recent requests, and recent projects.
 - `admin/projects.php`: lists and filters projects; includes publish/unpublish quick action.
 - `admin/projects-create.php`: creates portfolio projects.
 - `admin/projects-edit.php`: edits and deletes projects.
@@ -40,6 +51,21 @@ The app is a simple page-controller PHP application. Each public or admin URL ma
 - `admin/faqs-create.php`: creates FAQs.
 - `admin/faqs-edit.php`: edits and deletes FAQs.
 - `admin/faq-form.php`: shared FAQ form partial.
+
+### Phase 2 Admin Store and Contract Pages
+
+- `admin/products.php`: lists products and archives products.
+- `admin/products-create.php`: creates products.
+- `admin/products-edit.php`: edits products.
+- `admin/product-form.php`: shared product form partial.
+- `admin/contract-templates.php`: lists contract templates.
+- `admin/contract-templates-create.php`: creates contract templates.
+- `admin/contract-templates-edit.php`: edits contract templates.
+- `admin/contract-template-form.php`: shared contract template form partial.
+- `admin/contract-template-preview.php`: previews a rendered template with sample placeholder data.
+- `admin/orders.php`: lists customer orders and contract/payment statuses.
+- `admin/order-view.php`: views order details, updates manual order/payment status, marks pending contracts sent, voids unsigned/unvoided contracts, and generates replacement signing links for pending/sent/viewed contracts.
+- `admin/contract-copy.php`: authenticated admin view/download route for signed HTML contract copies.
 
 ## Includes and Helpers
 
@@ -59,7 +85,7 @@ Authentication is session-based. `admin_users.password_hash` stores hashes creat
 
 ## CSRF
 
-Admin forms include `csrf_field()`. POST handlers call `verify_csrf()` before writes. CSRF protection is implemented for admin setup, login, project creation/editing/list actions, and image management forms.
+Admin forms include `csrf_field()`. POST handlers call `verify_csrf()` before writes. CSRF protection is implemented for admin setup, login, project creation/editing/list actions, image management forms, public purchase forms, public signing forms, admin product create/edit/archive actions, admin contract template create/edit actions, admin order status updates, admin mark-contract-sent actions, admin void-contract actions, and admin replacement signing link generation.
 
 ## Security
 
@@ -124,3 +150,11 @@ Admins manage requests in `admin/requests.php` and `admin/request-view.php`. Adm
 ## FAQ Workflow
 
 Published FAQs display on `faq.php` and the homepage FAQ preview. Admins manage FAQ rows through `admin/faqs.php`, `admin/faqs-create.php`, and `admin/faqs-edit.php`. Draft FAQs remain hidden from public pages and FAQ schema output.
+
+## Phase 2 Development Notes
+
+The storefront is intentionally framework-free and follows the existing include pattern: public routes load `includes/db.php`, `includes/functions.php`, and `includes/csrf.php` when forms are state-changing. Admin routes continue to use `includes/auth.php` and `require_admin()`.
+
+Products are public only when `products.status = active`. Active products should have an active `contract_templates` assignment because `purchase.php` blocks checkout when a contract is missing or inactive. Orders snapshot product and contract metadata at creation time. Contract instances store the original template body snapshot and the rendered contract snapshot.
+
+Public signing links use a random token generated with `random_bytes()`. Only `hash('sha256', $token)` is stored. Admins cannot recover old raw tokens; they can generate a replacement signing link before signing, which updates the hash and displays the raw URL once for copying.

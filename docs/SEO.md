@@ -66,3 +66,11 @@ Future roadmap:
 
 - Add canonical tags and Open Graph metadata.
 - Add sitemap and robots.txt.
+
+## Phase 2 SEO Notes
+
+The store page has a dedicated page title and meta description. Product detail pages build titles and meta descriptions from active product data and include simple Service structured data with provider and offer price.
+
+Signing and contract-copy token routes are marked `noindex, nofollow` because they contain private order/contract information. Admin pages remain private and should not be indexed.
+
+No fake reviews, ratings, or availability claims are added to structured data.
