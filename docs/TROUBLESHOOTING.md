@@ -145,3 +145,32 @@ mysql -u YOUR_USER -p YOUR_DATABASE < database/portfolio_schema.sql
 **Solution:** Import or apply the updated schema, confirm all six current tables exist, then reload the page.
 
 **Lesson learned:** Schema updates must be applied before loading or testing code that queries new tables.
+
+## Phase 2 Troubleshooting
+
+### Store or admin product pages fail with missing table errors
+Run `database/migrations/20260710_phase_2_store_contract_system.sql` against the active MariaDB database.
+
+### Store is empty
+Confirm products exist with `status = active`. Draft and archived products are intentionally hidden.
+
+### Product detail loads but purchase is blocked
+The product must have an assigned contract template whose status is `active`. Create/activate the template, assign it to the product, and save the product as active.
+
+### Signing link became invalid after regeneration
+Generating a replacement signing link updates the stored token hash. Older raw links stop working by design. Copy and send the replacement URL shown immediately after generation.
+
+### Signed contract download is unavailable
+HTML download is allowed only after `contract_instances.status = signed`. Unsigned or void contracts show a pending/unavailable state.
+
+### Contract is voided
+
+Voided contracts intentionally cannot be signed, downloaded as signed copies, or used to generate replacement signing links. If the customer still needs to sign after a contract has been voided, create a new order/contract instance. If the contract has not been voided yet and the link was lost, generate a replacement link before voiding.
+
+### Replacement signing link controls are hidden
+
+Replacement links are available only for pending, sent, or viewed contracts. Signed and void contracts block regeneration by design.
+
+### Signed copy download is blocked
+
+HTML signed-contract downloads are only available after the signing flow sets the contract instance status to `signed`.

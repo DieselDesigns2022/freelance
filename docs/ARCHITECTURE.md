@@ -91,3 +91,11 @@ This is a small portfolio application meant to run on common shared/VPS PHP host
 ## Service Expansion Architecture
 
 The application now includes lead-generation routes in addition to portfolio routes. `request-website.php` writes validated request records into `website_requests`; admin request pages read and update those records behind `require_admin()`. `faq.php` reads published rows from `faqs`, while admin FAQ pages manage FAQ records. This keeps public request intake separate from private admin review and keeps FAQ publishing controlled by status.
+
+## Storefront, Orders, and Contracts
+
+Phase 2 adds a storefront layer beside the existing portfolio/request system. `products` represent purchasable website kits, builds, Shopify make-overs, revamps, and custom services. Public store and product pages read only active products.
+
+The purchase flow creates an `orders` record with customer details and product snapshots, then creates one `contract_instances` record from the product's assigned `contract_templates` row. The rendered contract snapshot is stored on the instance so template changes never alter old orders or signed contracts.
+
+Contract signing is token-based. The public token route resolves only one contract instance by token hash and never lists orders or contracts. Admin order management controls order/payment statuses separately from contract statuses; signed status is produced by the public signing flow, not by an admin dropdown.

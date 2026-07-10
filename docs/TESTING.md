@@ -157,3 +157,50 @@ Verify:
 - Admin can create FAQ.
 - Admin can edit FAQ.
 - Admin can publish/draft FAQ.
+
+## Phase 2 Manual Testing Checklist
+
+### Public store
+- Store page loads with active products in sort order.
+- Inactive/draft/archived products do not appear publicly.
+- Product detail pages load by slug and unavailable products show a friendly not-found state.
+
+### Purchase/order
+- Purchase form validates required name/email and URL format.
+- Honeypot submissions show a generic success state without creating orders or showing signing links.
+- Products without active contract templates cannot be purchased publicly.
+- Successful purchase creates an order and contract instance with product/template snapshots.
+
+### Contract signing
+- Signing token opens exactly one contract.
+- Opening pending or sent contracts marks them viewed without overwriting signed contracts.
+- Required signature fields and checkboxes are enforced.
+- A signed contract cannot be signed twice.
+- Signed contract copy view and HTML download work only after signing.
+
+### Admin products
+- Admin can create/edit/archive products.
+- Server-side validation catches missing names/descriptions, invalid statuses/types, invalid prices/deposits, duplicate slugs, and missing/inactive contract templates for active products.
+
+### Admin templates
+- Admin can create/edit/preview templates.
+- Server-side validation catches missing title/body, invalid service type/status, duplicate slug, and blank version defaulting.
+
+### Admin orders
+- Admin can list/view orders.
+- Manual order and payment statuses update independently.
+- Mark sent does not downgrade viewed/signed/void contracts.
+- Replacement signing links are visible in a copyable field and cannot be generated after signing or voiding.
+- Signed contract printable view and HTML download work.
+
+### Regression
+- Existing homepage, services, websites, Shopify make-overs, portfolio, project detail, FAQ, request form, admin login/logout/dashboard/projects/requests/FAQs still load.
+
+### Phase 2 lifecycle edge cases
+
+- Verify pending contracts show the signing form and can be marked sent, regenerated, or voided by admin.
+- Verify sent contracts become viewed when opened and still show the signing form.
+- Verify viewed contracts preserve `viewed_at`, still show the signing form, and are not downgraded by Mark Contract Sent.
+- Verify signed contracts show the already-signed state, allow signed copy/download, and do not show admin regenerate or void controls.
+- Verify voided contracts show unavailable messaging, cannot be signed, cannot be downloaded as signed copies, and cannot generate replacement signing links.
+- Verify regenerating a signing link invalidates previously generated raw links.

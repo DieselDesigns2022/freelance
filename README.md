@@ -136,3 +136,11 @@ New admin pages:
 - `/admin/faqs.php`, `/admin/faqs-create.php`, and `/admin/faqs-edit.php?id=...` — FAQ management.
 
 No email sending, payment processing, or paid third-party services are implemented. Requests are stored in the admin panel only for now.
+
+## Phase 2 Storefront and Contract System
+
+Phase 2 adds a store foundation for selling Diesel Designs website kits, website builds, Shopify make-overs, revamps, and custom service packages. Public visitors can browse `/store.php`, view active product/service detail pages, and start an order with customer/project details.
+
+Each purchasable product must be assigned an active contract template before public ordering is allowed. The order flow snapshots product details and renders a contract instance so later edits to templates do not change previously generated or signed contracts. Customers sign through secure token links and can view or download a printable HTML contract copy after signing.
+
+Admins can manage products, contract templates, and orders from the admin area. Payment handling is manual only in this phase through payment status fields; no live payment gateway, card capture, Stripe, PayPal, Square, WooCommerce, or Shopify checkout integration is included.

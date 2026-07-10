@@ -11,6 +11,8 @@ $metaDescription = $metaDescription ?? 'Website builds, website revamps, Shopify
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($pageTitle) ?></title>
     <meta name="description" content="<?= e($metaDescription) ?>">
+    <?php if (!empty($noindex)): ?><meta name="robots" content="noindex, nofollow"><?php endif; ?>
+    <?php if (!empty($structuredData)): ?><script type="application/ld+json"><?= json_encode($structuredData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script><?php endif; ?>
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
@@ -19,6 +21,7 @@ $metaDescription = $metaDescription ?? 'Website builds, website revamps, Shopify
     <nav>
         <a href="index.php">Home</a>
         <a href="services.php">Services</a>
+        <a href="store.php">Store</a>
         <a href="portfolio.php">Portfolio</a>
         <a href="websites.php">Website Builds</a>
         <a href="shopify-makeovers.php">Shopify Make-Overs</a>

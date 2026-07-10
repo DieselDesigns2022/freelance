@@ -180,3 +180,121 @@ function project_card(array $project): string
         . '</div>'
         . '</article>';
 }
+
+function money_format_dd($value): string
+{
+    return '$' . number_format((float) $value, 2);
+}
+
+function service_type_label(string $type): string
+{
+    return [
+        'website_kit' => 'Website Kit',
+        'website_build' => 'Website Build',
+        'shopify_makeover' => 'Shopify Make-Over',
+        'website_revamp' => 'Website Revamp',
+        'custom_service' => 'Custom Service',
+    ][$type] ?? ucwords(str_replace('_', ' ', $type));
+}
+
+function fulfillment_type_label(string $type): string
+{
+    return ['service' => 'Service', 'digital_kit' => 'Digital Kit', 'hybrid' => 'Hybrid'][$type] ?? ucfirst($type);
+}
+
+function token_hash(string $token): string
+{
+    return hash('sha256', $token);
+}
+
+function create_contract_token(): string
+{
+    return bin2hex(random_bytes(32));
+}
+
+function render_contract_template(string $body, array $data): string
+{
+    $replacements = [];
+    foreach ($data as $key => $value) {
+        $replacements['{{' . $key . '}}'] = (string) $value;
+    }
+    return strtr($body, $replacements);
+}
+
+function order_number(int $id): string
+{
+    return 'DD-' . date('Ymd') . '-' . str_pad((string) $id, 5, '0', STR_PAD_LEFT);
+}
+
+function table_exists(PDO $pdo, string $table): bool
+{
+    try {
+        $stmt = $pdo->prepare('SHOW TABLES LIKE ?');
+        $stmt->execute([$table]);
+        return (bool) $stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function allowed_service_types(): array
+{
+    return ['website_kit', 'website_build', 'shopify_makeover', 'website_revamp', 'custom_service'];
+}
+
+function allowed_fulfillment_types(): array
+{
+    return ['service', 'digital_kit', 'hybrid'];
+}
+
+function allowed_product_statuses(): array
+{
+    return ['draft', 'active', 'archived'];
+}
+
+
+function allowed_contract_template_statuses(): array
+{
+    return ['draft', 'active', 'archived'];
+}
+
+function allowed_contract_statuses(): array
+{
+    return ['pending', 'sent', 'viewed', 'signed', 'void'];
+}
+
+function signable_contract_statuses(): array
+{
+    return ['pending', 'sent', 'viewed'];
+}
+
+function contract_admin_mutable_statuses(): array
+{
+    return ['pending', 'sent', 'viewed'];
+}
+
+function allowed_order_statuses(): array
+{
+    return ['pending_contract', 'contract_sent', 'contract_signed', 'payment_pending', 'paid', 'in_progress', 'completed', 'cancelled'];
+}
+
+function allowed_payment_statuses(): array
+{
+    return ['not_required', 'pending', 'paid', 'refunded', 'failed'];
+}
+
+function base_url_from_request(): string
+{
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+    $publicDir = preg_replace('~/admin$~', '', rtrim($scriptDir, '/')) ?: '';
+
+    return $scheme . '://' . $host . $publicDir;
+}
+
+function safe_download_filename(string $orderNumber): string
+{
+    $safeOrder = preg_replace('/[^A-Za-z0-9_-]+/', '-', $orderNumber) ?: 'contract';
+    return 'signed-contract-' . trim($safeOrder, '-') . '.html';
+}

@@ -31,6 +31,11 @@ Covered areas include:
 - Project create/edit/delete.
 - Project list quick publish/unpublish.
 - Image upload/delete.
+- Public purchase and signing forms.
+- Admin product create/edit/archive actions.
+- Admin contract template create/edit actions.
+- Admin order status updates.
+- Admin mark sent, void, and replacement-link actions.
 
 ## Password Hashing
 
@@ -106,3 +111,22 @@ Not implemented:
 
 - No email sending is performed.
 - No CAPTCHA or paid spam-protection service is used.
+
+## Phase 2 Storefront and Contract Security
+
+- Public purchase and signing forms use CSRF tokens; the purchase form also uses the existing honeypot pattern.
+- Signing links use random tokens generated with `random_bytes()`. The database stores only a SHA-256 hash, so raw tokens cannot be recovered or displayed later.
+- Admin replacement-link generation updates `contract_instances.token_hash` and displays the new raw URL only in the immediate response. It is not stored in the database or session.
+- Token routes resolve only the single matching contract instance and do not expose public order or contract listings.
+- Contract snapshots are stored on `contract_instances` so future template edits do not change past order contracts.
+- Signed contract copies are printable/downloadable HTML only after signing. Unsigned contracts cannot be downloaded as signed copies.
+- Admin product, template, order, and contract-copy routes require existing admin authentication.
+- Contract `signed` status is set by the public signing flow with legal name, typed signature, timestamp, IP address, and user-agent audit fields; admin status controls do not fake signature data.
+
+### Contract lifecycle hardening
+
+- Voided contracts cannot be signed, cannot generate replacement signing links, and cannot be downloaded as signed contract copies.
+- Signed contracts cannot generate replacement signing links and cannot be voided from the simple order view controls.
+- Regenerating a signing link updates the stored token hash, so old raw links become invalid immediately.
+- `signed` contract status is produced only by the public signing flow after the signer completes required signature fields and confirmations.
+- Signed contract HTML downloads are available only when the contract instance status is `signed`.
