@@ -553,7 +553,9 @@ small {
     .admin-product-form {
         grid-template-columns: 1fr;
     }
-}\n\n/* Phase 2.1 category product cards */
+}
+
+/* Phase 2.1 category product cards */
 .category-hero {
     padding-bottom: 2rem;
 }
