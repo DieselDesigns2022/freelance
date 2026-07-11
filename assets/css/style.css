@@ -821,7 +821,7 @@ button:disabled,
 /* Phase 2.1 Shopify intake question highlights */
 .request-form .question-highlight {
     color: var(--teal);
-    font-weight: 800;
+    font-weight: inherit;
 }
 
 /* Phase 2.1 keep highlighted question text inline */
