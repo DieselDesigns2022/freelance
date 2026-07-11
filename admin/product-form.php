@@ -52,8 +52,9 @@ $templates = db()->query("SELECT id, title, version, status FROM contract_templa
         </select>
     </label>
 
-    <label class="check">
-        <input type="checkbox" name="is_featured" value="1" <?= !empty($product['is_featured']) ? 'checked' : '' ?>> Featured
+    <label class="feature-check">
+        <span>Featured</span>
+        <input type="checkbox" name="is_featured" value="1" <?= !empty($product['is_featured']) ? 'checked' : '' ?>>
     </label>
 
     <label class="form-full">Contract template

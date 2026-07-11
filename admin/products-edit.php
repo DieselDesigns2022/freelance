@@ -69,6 +69,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $errors[] = 'Image not found.';
+    } elseif ($action === 'set_thumbnail') {
+        $imageId = (int) ($_POST['image_id'] ?? 0);
+        $imgStmt = db()->prepare('SELECT id FROM product_images WHERE id = ? AND product_id = ?');
+        $imgStmt->execute([$imageId, $id]);
+        $img = $imgStmt->fetch();
+
+        if ($img) {
+            db()->prepare(
+                'UPDATE product_images '
+                . 'SET sort_order = CASE WHEN id = ? THEN -1000 ELSE GREATEST(sort_order, 0) END '
+                . 'WHERE product_id = ?'
+            )->execute([$imageId, $id]);
+
+            flash('success', 'Product thumbnail updated.');
+            redirect('products-edit.php?id=' . $id);
+        }
+
+        $errors[] = 'Image not found.';
     } elseif ($action === 'update_images') {
         foreach (($_POST['images'] ?? []) as $imageId => $imageData) {
             db()->prepare('UPDATE product_images SET alt_text = ?, sort_order = ? WHERE id = ? AND product_id = ?')
@@ -189,10 +207,11 @@ if (table_exists(db(), 'product_images')) {
     $productImages = $images->fetchAll();
 }
 ?>
-<section class="admin-card">
+<section class="admin-card product-images-panel">
     <h2>Product Images</h2>
+    <p class="helper">Upload watermarked previews here. Use “Set as Thumbnail” to choose the preview shown on category pages and cards.</p>
 
-    <form method="post" enctype="multipart/form-data" class="admin-form">
+    <form method="post" enctype="multipart/form-data" class="admin-form product-image-upload-form">
         <?= csrf_field() ?>
         <input type="hidden" name="action" value="upload_image">
 
@@ -204,55 +223,70 @@ if (table_exists(db(), 'product_images')) {
             <input name="alt_text" maxlength="255">
         </label>
 
-        <label>Sort order
-            <input name="image_sort_order" type="number" value="0">
-        </label>
-
         <button class="btn">Upload Images</button>
     </form>
 
     <?php if ($productImages): ?>
-        <form method="post" class="admin-form">
-            <?= csrf_field() ?>
-            <input type="hidden" name="action" value="update_images">
+        <?php $thumbnailImageId = (int) ($productImages[0]['id'] ?? 0); ?>
 
+        <div class="product-image-manager">
             <?php foreach ($productImages as $image): ?>
-                <div class="admin-card">
-                    <img
-                        src="../<?= e($image['image_path']) ?>"
-                        alt="<?= e($image['alt_text'] ?: $product['name']) ?>"
-                        style="max-width:180px;height:auto"
-                    >
+                <?php $isThumbnail = (int) $image['id'] === $thumbnailImageId; ?>
 
-                    <label>Alt text
-                        <input
-                            name="images[<?= (int) $image['id'] ?>][alt_text]"
-                            maxlength="255"
-                            value="<?= e($image['alt_text'] ?? '') ?>"
+                <article class="admin-card product-image-admin-card <?= $isThumbnail ? 'is-thumbnail' : '' ?>">
+                    <div class="product-image-preview-wrap">
+                        <img
+                            class="product-image-admin-preview"
+                            src="../<?= e($image['image_path']) ?>"
+                            alt="<?= e($image['alt_text'] ?: $product['name']) ?>"
                         >
-                    </label>
 
-                    <label>Sort order
-                        <input
-                            name="images[<?= (int) $image['id'] ?>][sort_order]"
-                            type="number"
-                            value="<?= e((string) $image['sort_order']) ?>"
-                        >
-                    </label>
-                </div>
+                        <?php if ($isThumbnail): ?>
+                            <span class="thumbnail-badge">Current thumbnail</span>
+                        <?php endif; ?>
+                    </div>
+
+                    <form method="post" class="product-image-meta-form">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="action" value="update_images">
+
+                        <label>Alt text
+                            <input
+                                name="images[<?= (int) $image['id'] ?>][alt_text]"
+                                maxlength="255"
+                                value="<?= e($image['alt_text'] ?? '') ?>"
+                            >
+                        </label>
+
+                        <label>Display order
+                            <input
+                                name="images[<?= (int) $image['id'] ?>][sort_order]"
+                                type="number"
+                                value="<?= e((string) $image['sort_order']) ?>"
+                            >
+                        </label>
+
+                        <button class="btn">Save Image Details</button>
+                    </form>
+
+                    <div class="product-image-actions">
+                        <form method="post">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="set_thumbnail">
+                            <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
+                            <button class="btn btn-ghost" <?= $isThumbnail ? 'disabled' : '' ?>>Set as Thumbnail</button>
+                        </form>
+
+                        <form method="post" onsubmit="return confirm('Delete this image permanently?')">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="delete_image">
+                            <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
+                            <button class="btn danger">Delete Image</button>
+                        </form>
+                    </div>
+                </article>
             <?php endforeach; ?>
-
-            <button class="btn">Save Image Details</button>
-        </form>
-
-        <?php foreach ($productImages as $image): ?>
-            <form method="post" onsubmit="return confirm('Delete this image?')">
-                <?= csrf_field() ?>
-                <input type="hidden" name="action" value="delete_image">
-                <input type="hidden" name="image_id" value="<?= (int) $image['id'] ?>">
-                <button class="btn btn-ghost">Delete <?= e($image['image_path']) ?></button>
-            </form>
-        <?php endforeach; ?>
+        </div>
     <?php else: ?>
         <p>No product images uploaded yet.</p>
     <?php endif; ?>
