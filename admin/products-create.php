@@ -14,7 +14,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $product = $_POST;
     $name = trim($_POST['name'] ?? '');
-    $slug = trim($_POST['slug'] ?? '') ?: slugify($name);
     $shortDescription = trim($_POST['short_description'] ?? '');
     $serviceType = $_POST['service_type'] ?? '';
     $fulfillmentType = 'service';
@@ -57,10 +56,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Active products must have an active contract template assigned.';
     }
 
-    $dupe = db()->prepare('SELECT id FROM products WHERE slug = ?');
-    $dupe->execute([$slug]);
-    if ($dupe->fetch()) {
-        $errors[] = 'Slug already exists.';
+    $slug = '';
+    if ($name !== '') {
+        $baseSlug = slugify($name);
+        $slug = $baseSlug;
+        $suffix = 2;
+
+        while (true) {
+            $dupe = db()->prepare('SELECT id FROM products WHERE slug = ?');
+            $dupe->execute([$slug]);
+
+            if (!$dupe->fetch()) {
+                break;
+            }
+
+            $slug = $baseSlug . '-' . $suffix++;
+        }
     }
 
     if (!$errors) {
@@ -83,14 +94,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             null,
             $status,
             isset($_POST['is_featured']) ? 1 : 0,
-            (int) ($_POST['sort_order'] ?? 0),
+            0,
             $contractTemplateId === '' ? null : (int) $contractTemplateId,
             $demoUrl ?: null,
             $demoPassword ?: null,
         ]);
 
         $newProductId = (int) db()->lastInsertId();
-        flash('success', 'Product created. Add screenshots/images on this edit page.');
+        $uploadedImages = 0;
+        $uploadErrors = [];
+
+        foreach (($_FILES['product_images']['name'] ?? []) as $idx => $unused) {
+            $file = [
+                'name' => $_FILES['product_images']['name'][$idx] ?? '',
+                'type' => $_FILES['product_images']['type'][$idx] ?? '',
+                'tmp_name' => $_FILES['product_images']['tmp_name'][$idx] ?? '',
+                'error' => $_FILES['product_images']['error'][$idx] ?? UPLOAD_ERR_NO_FILE,
+                'size' => $_FILES['product_images']['size'][$idx] ?? 0,
+            ];
+
+            [$imagePath, $uploadError] = upload_image($file);
+
+            if ($uploadError) {
+                $uploadErrors[] = $uploadError;
+                continue;
+            }
+
+            if ($imagePath) {
+                db()->prepare(
+                    'INSERT INTO product_images (product_id,image_path,alt_text,sort_order,created_at) '
+                    . 'VALUES (?,?,?,?,NOW())'
+                )->execute([
+                    $newProductId,
+                    $imagePath,
+                    trim($_POST['image_alt_text'] ?? '') ?: null,
+                    $idx,
+                ]);
+                $uploadedImages++;
+            }
+        }
+
+        $message = 'Product created.';
+        if ($uploadedImages > 0) {
+            $message .= ' ' . $uploadedImages . ' image' . ($uploadedImages === 1 ? '' : 's') . ' uploaded.';
+        }
+        if ($uploadErrors) {
+            $message .= ' Some images were not uploaded: ' . implode(' ', array_unique($uploadErrors));
+        }
+
+        flash('success', $message);
         redirect('products-edit.php?id=' . $newProductId);
     }
 }

@@ -3,17 +3,12 @@ $serviceTypes = ['website_kit', 'website_build', 'shopify_makeover', 'website_re
 $statuses = ['draft', 'active', 'archived'];
 $templates = db()->query("SELECT id, title, version, status FROM contract_templates ORDER BY title")->fetchAll();
 ?>
-<form method="post" class="admin-form">
+<form method="post" enctype="multipart/form-data" class="admin-form admin-product-form">
     <?= csrf_field() ?>
     <input type="hidden" name="action" value="save">
 
     <label>Product name *
         <input name="name" required maxlength="255" value="<?= e($product['name'] ?? '') ?>">
-    </label>
-
-    <label>Slug
-        <input name="slug" maxlength="255" value="<?= e($product['slug'] ?? '') ?>">
-        <small>Leave blank to generate from name.</small>
     </label>
 
     <label>Product type / service type
@@ -61,10 +56,6 @@ $templates = db()->query("SELECT id, title, version, status FROM contract_templa
         <input type="checkbox" name="is_featured" value="1" <?= !empty($product['is_featured']) ? 'checked' : '' ?>> Featured
     </label>
 
-    <label>Sort order
-        <input name="sort_order" type="number" value="<?= e((string) ($product['sort_order'] ?? 0)) ?>">
-    </label>
-
     <label>Contract template
         <select name="contract_template_id">
             <option value="">None</option>
@@ -76,6 +67,21 @@ $templates = db()->query("SELECT id, title, version, status FROM contract_templa
         </select>
         <small>Active products require an active contract template before they can be purchased.</small>
     </label>
+
+    <?php if (empty($product['id'])): ?>
+        <div class="form-full admin-card product-image-create-card">
+            <h2>Product Images</h2>
+            <p>Upload screenshots/images now, or leave this blank and add them from the edit page later.</p>
+
+            <label>Product screenshots/images
+                <input type="file" name="product_images[]" accept="image/jpeg,image/png,image/webp" multiple>
+            </label>
+
+            <label>Alt text for uploaded images
+                <input name="image_alt_text" maxlength="255" value="<?= e($product['image_alt_text'] ?? '') ?>">
+            </label>
+        </div>
+    <?php endif; ?>
 
     <button class="btn btn-accent">Save Product</button>
 </form>

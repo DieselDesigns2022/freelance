@@ -502,3 +502,55 @@ small {
         grid-template-columns: 1fr;
     }
 }
+
+/* Phase 2.1 admin product form cleanup */
+.admin-product-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
+    align-items: start;
+}
+
+.admin-product-form > label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    margin: 0;
+    min-width: 0;
+}
+
+.admin-product-form textarea {
+    min-height: 130px;
+    resize: vertical;
+}
+
+.admin-product-form .check {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    margin: 0;
+}
+
+.admin-product-form .check input {
+    width: auto;
+}
+
+.admin-product-form .form-full,
+.admin-product-form > button {
+    grid-column: 1 / -1;
+}
+
+.admin-product-form > button {
+    justify-self: start;
+}
+
+.product-image-create-card {
+    margin: 0;
+}
+
+@media (max-width: 800px) {
+    .admin-product-form {
+        grid-template-columns: 1fr;
+    }
+}
