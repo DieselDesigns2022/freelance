@@ -553,4 +553,18 @@ small {
     .admin-product-form {
         grid-template-columns: 1fr;
     }
+}\n\n/* Phase 2.1 category product cards */
+.category-hero {
+    padding-bottom: 2rem;
+}
+
+.category-block {
+    padding-top: 1.5rem;
+    padding-bottom: 2.5rem;
+}
+
+.product-service-card .product-card-thumb {
+    width: 100%;
+    height: 230px;
+    object-fit: cover;
 }

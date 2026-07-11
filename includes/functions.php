@@ -181,6 +181,32 @@ function project_card(array $project): string
         . '</article>';
 }
 
+function product_service_card(array $product): string
+{
+    $imageHtml = '';
+
+    if (!empty($product['image_path'])) {
+        $alt = $product['alt_text'] ?: $product['name'];
+        $imageHtml = '<a href="product-service.php?slug=' . e($product['slug']) . '">'
+            . '<img class="product-card-thumb" src="' . e($product['image_path']) . '" alt="' . e($alt) . '">'
+            . '</a>';
+    }
+
+    return '<article class="project-card product-service-card">'
+        . $imageHtml
+        . '<div class="card-body">'
+        . '<span class="pill">' . e(service_type_label($product['service_type'])) . '</span>'
+        . '<h3>' . e($product['name']) . '</h3>'
+        . '<p>' . e($product['short_description']) . '</p>'
+        . '<p><strong>' . e(money_format_dd($product['price'])) . '</strong></p>'
+        . '<div class="card-actions">'
+        . '<a class="btn" href="product-service.php?slug=' . e($product['slug']) . '">View Details</a>'
+        . '<a class="btn btn-accent" href="purchase.php?product=' . e($product['slug']) . '">Purchase / Start Order</a>'
+        . '</div>'
+        . '</div>'
+        . '</article>';
+}
+
 function money_format_dd($value): string
 {
     return '$' . number_format((float) $value, 2);
