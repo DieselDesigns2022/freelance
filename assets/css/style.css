@@ -585,3 +585,44 @@ small {
     color: var(--teal);
     margin-right: .35rem;
 }
+
+/* Phase 2.1 admin product alignment fixes */
+.admin-product-form > label.check {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: .55rem;
+    grid-column: 1 / -1;
+}
+
+.admin-product-form > label.check input {
+    flex: 0 0 auto;
+    width: auto;
+    margin: 0;
+}
+
+.admin-product-form > label.form-full {
+    grid-column: 1 / -1;
+}
+
+.admin-product-form input,
+.admin-product-form select {
+    min-height: 52px;
+}
+
+.admin-product-form > button {
+    width: auto;
+    justify-self: start;
+}
+
+.table-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .6rem;
+    align-items: center;
+}
+
+.table-actions .inline {
+    display: inline-flex;
+}
