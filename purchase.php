@@ -86,6 +86,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $product) {
                 $errors[] = 'Scrolling banner text can have a maximum of 2 phrases separated by a dash.';
             }
 
+            $requiredShopifyFields = [
+                'new_products_collection' => 'New products collection',
+                'trending_products_collection' => 'Trending / popular / hot products collection',
+                'collection_cover_names' => 'Collection cover image categories / collections',
+            ];
+
+            foreach ($requiredShopifyFields as $key => $label) {
+                if ($intakeAnswers[$key] === '') {
+                    $errors[] = $label . ' is required.';
+                }
+            }
+
             $logoErrors = $_FILES['logo_files']['error'] ?? [];
             $hasLogoUpload = false;
 
@@ -334,31 +346,31 @@ include __DIR__ . '/includes/header.php';
                 </label>
 
                 <label>Scrolling banner text *
-                    <small>Use “-” between phrases. Example: Welcome - Free shipping. Maximum of 2 phrases.</small>
+                    <small>Use “-” between phrases. Example: Welcome - Free shipping. Maximum of 2 phrases. Put N/A if you do not want the scrolling text banner.</small>
                     <input name="scrolling_banner_text" maxlength="190" required value="<?= e($values['scrolling_banner_text'] ?? '') ?>">
                 </label>
 
-                <label>Do you have any collections you'd like featured on the home page? If yes, what are they?
+                <label>Do you have any <span class="question-highlight">collections</span> you'd like featured on the home page? If yes, what are they?
                     <textarea name="featured_collections"><?= e($values['featured_collections'] ?? '') ?></textarea>
                 </label>
 
-                <label>Do you have any specific products you want featured on the home page? If so, what are they?
+                <label>Do you have any specific <span class="question-highlight">products</span> you want featured on the home page? If so, what are they?
                     <textarea name="featured_products"><?= e($values['featured_products'] ?? '') ?></textarea>
                 </label>
 
-                <label>What is the name of your collection for NEW products?
+                <label>What is the name of your collection for NEW products? *
                     <small>If you do not have a collection for this yet, please create one first and then put the name of the collection in this field. Example: New Releases.</small>
-                    <input name="new_products_collection" maxlength="190" value="<?= e($values['new_products_collection'] ?? '') ?>">
+                    <input name="new_products_collection" maxlength="190" required value="<?= e($values['new_products_collection'] ?? '') ?>">
                 </label>
 
-                <label>What is the name of your collection for TRENDING / POPULAR / HOT products?
+                <label>What is the name of your collection for TRENDING / POPULAR / HOT products? *
                     <small>If you do not have a collection for this yet, please create one first and then put the name of the collection in this field.</small>
-                    <input name="trending_products_collection" maxlength="190" value="<?= e($values['trending_products_collection'] ?? '') ?>">
+                    <input name="trending_products_collection" maxlength="190" required value="<?= e($values['trending_products_collection'] ?? '') ?>">
                 </label>
 
-                <label>Please list the categories or product collection names you would like collection cover images created for.
+                <label>Please list the categories or product collection names you would like collection cover images created for. *
                     <small>Your order includes up to 20 collection cover images. Additional collection covers are $2 each and must be discussed and paid for before submitting this form.</small>
-                    <textarea name="collection_cover_names"><?= e($values['collection_cover_names'] ?? '') ?></textarea>
+                    <textarea name="collection_cover_names" required><?= e($values['collection_cover_names'] ?? '') ?></textarea>
                 </label>
 
                 <label>Do you have a reviews app installed and want reviews displayed on your homepage?

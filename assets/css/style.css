@@ -817,3 +817,9 @@ button:disabled,
     border-radius: 18px;
     background: rgba(22, 224, 207, .06);
 }
+
+/* Phase 2.1 Shopify intake question highlights */
+.request-form .question-highlight {
+    color: var(--teal);
+    font-weight: 800;
+}
