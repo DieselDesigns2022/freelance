@@ -41,7 +41,7 @@ include __DIR__ . '/includes/header.php';
         <p><a class="btn" href="store.php">Back to Store</a></p>
     </section>
 <?php else: ?>
-    <section class="page-hero">
+    <section class="page-hero product-page-hero">
         <p class="eyebrow"><?= e(service_type_label($product['service_type'])) ?></p>
         <h1><?= e($product['name']) ?></h1>
         <p><?= e($product['short_description']) ?></p>
@@ -61,14 +61,14 @@ include __DIR__ . '/includes/header.php';
         <?php endif; ?>
 
         <?php if ($product['demo_password']): ?>
-            <p><strong>Demo password:</strong> <?= e($product['demo_password']) ?></p>
+            <p><strong class="demo-label">Demo password:</strong> <?= e($product['demo_password']) ?></p>
         <?php endif; ?>
 
         <p><a class="btn btn-accent" href="purchase.php?product=<?= e($product['slug']) ?>">Order Now</a></p>
     </section>
 
     <?php if ($productImages): ?>
-        <section class="section">
+        <section class="section product-section">
             <h2>Screenshots</h2>
             <div class="project-grid">
                 <?php foreach ($productImages as $image): ?>
@@ -79,28 +79,28 @@ include __DIR__ . '/includes/header.php';
     <?php endif; ?>
 
     <?php if (trim((string) ($product['full_description'] ?? '')) !== ''): ?>
-        <section class="section">
+        <section class="section product-section">
             <h2>Details</h2>
             <p><?= nl2br(e($product['full_description'])) ?></p>
         </section>
     <?php endif; ?>
 
     <?php if ($product['includes_text']): ?>
-        <section class="section">
+        <section class="section product-section">
             <h2>Includes</h2>
             <p><?= nl2br(e($product['includes_text'])) ?></p>
         </section>
     <?php endif; ?>
 
     <?php if ($product['turnaround_text']): ?>
-        <section class="section">
+        <section class="section product-section">
             <h2>Turnaround / Process</h2>
             <p><?= nl2br(e($product['turnaround_text'])) ?></p>
         </section>
     <?php endif; ?>
 
     <?php if ($product['requirements_text']): ?>
-        <section class="section">
+        <section class="section product-section">
             <h2>Requirements</h2>
             <p><?= nl2br(e($product['requirements_text'])) ?></p>
         </section>

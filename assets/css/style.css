@@ -570,3 +570,18 @@ small {
     height: 230px;
     object-fit: cover;
 }
+
+/* Phase 2.1 product detail spacing */
+.product-page-hero {
+    padding-bottom: 1rem;
+}
+
+.product-section {
+    padding-top: 1.25rem;
+    padding-bottom: 2rem;
+}
+
+.demo-label {
+    color: var(--teal);
+    margin-right: .35rem;
+}
