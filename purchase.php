@@ -350,11 +350,11 @@ include __DIR__ . '/includes/header.php';
                     <input name="scrolling_banner_text" maxlength="190" required value="<?= e($values['scrolling_banner_text'] ?? '') ?>">
                 </label>
 
-                <label>Do you have any <span class="question-highlight">collections</span> you'd like featured on the home page? If yes, what are they?
+                <label><span class="question-label">Do you have any <span class="question-highlight">collections</span> you'd like featured on the home page? If yes, what are they?</span>
                     <textarea name="featured_collections"><?= e($values['featured_collections'] ?? '') ?></textarea>
                 </label>
 
-                <label>Do you have any specific <span class="question-highlight">products</span> you want featured on the home page? If so, what are they?
+                <label><span class="question-label">Do you have any specific <span class="question-highlight">products</span> you want featured on the home page? If so, what are they?</span>
                     <textarea name="featured_products"><?= e($values['featured_products'] ?? '') ?></textarea>
                 </label>
 

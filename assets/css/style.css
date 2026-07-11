@@ -823,3 +823,9 @@ button:disabled,
     color: var(--teal);
     font-weight: 800;
 }
+
+/* Phase 2.1 keep highlighted question text inline */
+.request-form .question-label,
+.request-form .question-highlight {
+    display: inline;
+}
