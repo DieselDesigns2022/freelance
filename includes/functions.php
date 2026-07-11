@@ -3,7 +3,9 @@ declare(strict_types=1);
 
 const CONTACT_EMAIL = 'diesel.designs.contact@gmail.com';
 const UPLOAD_RELATIVE_DIR = 'uploads/portfolio/';
+const ORDER_UPLOAD_RELATIVE_DIR = 'uploads/order-assets/';
 const MAX_IMAGE_BYTES = 10485760;
+const MAX_ORDER_UPLOAD_BYTES = 15728640;
 
 function e(?string $value): string
 {
@@ -139,6 +141,63 @@ function upload_image(array $file): array
 
     return [UPLOAD_RELATIVE_DIR . $name, null];
 }
+
+
+function upload_order_asset(array $file): array
+{
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+        return [null, null];
+    }
+
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        return [null, 'File upload failed. Please try again.'];
+    }
+
+    if (($file['size'] ?? 0) > MAX_ORDER_UPLOAD_BYTES) {
+        return [null, 'Uploaded files must be 15MB or smaller each.'];
+    }
+
+    $ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
+    $allowed = [
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        'pdf' => 'application/pdf',
+    ];
+
+    if (!isset($allowed[$ext])) {
+        return [null, 'Only PNG, JPG, WEBP, and PDF files are allowed.'];
+    }
+
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mime = $finfo->file($file['tmp_name']);
+
+    if ($mime !== $allowed[$ext]) {
+        return [null, 'The uploaded file type is not allowed.'];
+    }
+
+    $dir = dirname(__DIR__) . '/' . ORDER_UPLOAD_RELATIVE_DIR;
+
+    if (!is_dir($dir)) {
+        mkdir($dir, 0755, true);
+    }
+
+    $name = bin2hex(random_bytes(16)) . '.' . $ext;
+    $target = $dir . $name;
+
+    if (!move_uploaded_file($file['tmp_name'], $target)) {
+        return [null, 'Could not save uploaded file.'];
+    }
+
+    return [[
+        'path' => ORDER_UPLOAD_RELATIVE_DIR . $name,
+        'original_name' => substr((string) ($file['name'] ?? ''), 0, 255),
+        'mime_type' => $mime,
+        'file_size' => (int) ($file['size'] ?? 0),
+    ], null];
+}
+
 
 function delete_portfolio_file(?string $relative): bool
 {
