@@ -292,9 +292,12 @@ function order_number(int $id): string
 function table_exists(PDO $pdo, string $table): bool
 {
     try {
-        $stmt = $pdo->prepare('SHOW TABLES LIKE ?');
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?'
+        );
         $stmt->execute([$table]);
-        return (bool) $stmt->fetchColumn();
+
+        return (int) $stmt->fetchColumn() > 0;
     } catch (Throwable $e) {
         return false;
     }
