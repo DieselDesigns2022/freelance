@@ -297,6 +297,40 @@ function create_contract_token(): string
     return bin2hex(random_bytes(32));
 }
 
+function contract_legacy_placeholder_replacements(array $data): array
+{
+    $clientName = trim((string) ($data['client_name'] ?? $data['customer_name'] ?? ''));
+    $clientEmail = trim((string) ($data['client_email'] ?? $data['customer_email'] ?? ''));
+    $businessName = trim((string) ($data['business_name'] ?? ''));
+    $orderId = trim((string) ($data['order_id'] ?? $data['order_number'] ?? ''));
+    $productName = trim((string) ($data['product_name'] ?? $data['product_name_snapshot'] ?? ''));
+    $productPrice = trim((string) ($data['product_price'] ?? $data['product_price_snapshot'] ?? ''));
+    $projectUrl = trim((string) ($data['project_url'] ?? $data['website_url'] ?? ''));
+    $orderDate = trim((string) ($data['order_date'] ?? ''));
+
+    return [
+        '[Client Name]' => $clientName !== '' ? $clientName : 'N/A',
+        "[Client's Name]" => $clientName !== '' ? $clientName : 'N/A',
+        "[Client’s Name]" => $clientName !== '' ? $clientName : 'N/A',
+        '[Client Email]' => $clientEmail !== '' ? $clientEmail : 'N/A',
+        '[Business Name]' => $businessName !== '' ? $businessName : 'N/A',
+        '[Order ID]' => $orderId !== '' ? $orderId : 'N/A',
+        '[Order Number]' => $orderId !== '' ? $orderId : 'N/A',
+        '[Product Name]' => $productName !== '' ? $productName : 'N/A',
+        '[Product Price]' => $productPrice !== '' ? $productPrice : 'N/A',
+        '[Project URL]' => $projectUrl !== '' ? $projectUrl : 'N/A',
+        '[Order Date]' => $orderDate !== '' ? $orderDate : date('Y-m-d'),
+    ];
+}
+
+function normalize_contract_body(string $body): string
+{
+    $body = str_replace(["\r\n", "\r"], "\n", $body);
+    $body = (string) (preg_replace("/\n{3,}/", "\n\n", $body) ?? $body);
+
+    return trim($body);
+}
+
 function render_contract_template(string $body, array $data): string
 {
     $knownKeys = array_merge(contract_placeholder_keys(), array_keys($data));
@@ -307,7 +341,27 @@ function render_contract_template(string $body, array $data): string
         $replacements['{{' . $key . '}}'] = $value === null || $value === '' ? 'N/A' : (string) $value;
     }
 
-    return strtr($body, $replacements);
+    $body = strtr($body, $replacements);
+    $body = strtr($body, contract_legacy_placeholder_replacements($data));
+
+    return normalize_contract_body($body);
+}
+
+function contract_display_body(array $contract): string
+{
+    $body = (string) ($contract['rendered_contract_snapshot'] ?? '');
+    $body = strtr($body, contract_legacy_placeholder_replacements([
+        'client_name' => $contract['customer_name'] ?? '',
+        'client_email' => $contract['customer_email'] ?? '',
+        'business_name' => $contract['business_name'] ?? '',
+        'order_id' => $contract['order_number'] ?? '',
+        'product_name' => $contract['product_name_snapshot'] ?? '',
+        'product_price' => isset($contract['product_price_snapshot']) ? money_format_dd($contract['product_price_snapshot']) : '',
+        'project_url' => $contract['website_url'] ?? '',
+        'order_date' => isset($contract['created_at']) ? substr((string) $contract['created_at'], 0, 10) : '',
+    ]));
+
+    return normalize_contract_body($body);
 }
 
 function contract_placeholder_keys(): array
@@ -315,8 +369,9 @@ function contract_placeholder_keys(): array
     return [
         'client_name', 'client_email', 'business_name', 'order_id', 'product_name', 'product_price',
         'service_type', 'project_url', 'order_date', 'designer_name', 'site_name', 'shopify_store_url',
-        'shopify_store_name', 'main_goal', 'brand_colors', 'asset_link', 'featured_products',
-        'requested_sections', 'inspiration_links', 'launch_timing', 'extra_notes', 'intake_summary',
+        'shopify_collaborator_code', 'top_bar_text', 'scrolling_banner_text', 'featured_collections',
+        'featured_products', 'new_products_collection', 'trending_products_collection',
+        'collection_cover_names', 'reviews_app', 'intake_summary',
     ];
 }
 

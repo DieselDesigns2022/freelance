@@ -829,3 +829,64 @@ button:disabled,
 .request-form .question-highlight {
     display: inline;
 }
+
+/* Phase 2.1 contract display and signing form cleanup */
+.contract-sign-hero {
+    padding-bottom: 1rem;
+}
+
+.contract-sign-card {
+    max-width: 960px;
+    margin: 0 auto 1.5rem;
+}
+
+.contract-body {
+    white-space: pre-line;
+    line-height: 1.65;
+    font-size: 1rem;
+}
+
+.contract-sign-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    max-width: 960px;
+    margin: 1.25rem auto 0;
+}
+
+.contract-sign-form > label:not(.sign-check) {
+    display: flex;
+    flex-direction: column;
+    gap: .45rem;
+}
+
+.contract-sign-form > .sign-check {
+    grid-column: 1 / -1;
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: flex-start;
+    gap: .7rem;
+    width: fit-content;
+    margin: 0;
+}
+
+.contract-sign-form > .sign-check input {
+    flex: 0 0 auto;
+    width: 18px;
+    min-height: 18px;
+    height: 18px;
+    margin: 0;
+}
+
+.contract-sign-form > .sign-check span {
+    display: inline;
+}
+
+.contract-sign-form > button {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 800px) {
+    .contract-sign-form {
+        grid-template-columns: 1fr !important;
+    }
+}

@@ -8,11 +8,15 @@ $contract = null;
 
 if ($token !== '' && table_exists(db(), 'contract_instances')) {
     $stmt = db()->prepare(
-        'SELECT ci.*, o.order_number, o.customer_name, o.customer_email, o.business_name, o.product_name_snapshot, o.product_price_snapshot '
+        'SELECT ci.*, o.order_number, o.customer_name, o.customer_email, o.business_name, o.website_url, o.created_at, o.product_name_snapshot, o.product_price_snapshot '
         . 'FROM contract_instances ci JOIN orders o ON ci.order_id = o.id WHERE ci.token_hash = ?'
     );
     $stmt->execute([token_hash($token)]);
     $contract = $stmt->fetch();
+
+    if ($contract) {
+        $contract['rendered_contract_snapshot'] = contract_display_body($contract);
+    }
 }
 
 function signed_contract_html(array $contract): string
@@ -25,7 +29,7 @@ function signed_contract_html(array $contract): string
         . '<strong>Customer:</strong> ' . e($contract['customer_name']) . ' (' . e($contract['customer_email']) . ')<br>'
         . '<strong>Business:</strong> ' . e($contract['business_name'] ?: 'N/A') . '<br>'
         . '<strong>Service:</strong> ' . e($contract['product_name_snapshot']) . ' — ' . e(money_format_dd($contract['product_price_snapshot'])) . '</p>'
-        . '<hr><div>' . nl2br(e($contract['rendered_contract_snapshot'])) . '</div><hr>'
+        . '<hr><div style="white-space: pre-line; line-height: 1.65;">' . e($contract['rendered_contract_snapshot']) . '</div><hr>'
         . '<h2>Signature &amp; Audit Trail</h2>'
         . '<p><strong>Legal name:</strong> ' . e($contract['signer_legal_name']) . '<br>'
         . '<strong>Typed signature:</strong> ' . e($contract['typed_signature']) . '<br>'
@@ -78,7 +82,7 @@ include __DIR__ . '/includes/header.php';
             <strong>Service:</strong> <?= e($contract['product_name_snapshot']) ?> — <?= e(money_format_dd($contract['product_price_snapshot'])) ?>
         </p>
         <hr>
-        <div><?= nl2br(e($contract['rendered_contract_snapshot'])) ?></div>
+        <div class="contract-body"><?= e($contract['rendered_contract_snapshot']) ?></div>
         <hr>
         <h2>Signature & Audit Trail</h2>
         <p>
