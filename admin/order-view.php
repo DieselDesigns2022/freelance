@@ -28,6 +28,13 @@ if (!$order) {
     exit('Not found');
 }
 
+$orderUploads = [];
+if (table_exists(db(), 'order_uploads')) {
+    $uploadStmt = db()->prepare('SELECT * FROM order_uploads WHERE order_id = ? ORDER BY upload_type, id');
+    $uploadStmt->execute([$id]);
+    $orderUploads = $uploadStmt->fetchAll();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
     $action = $_POST['action'] ?? 'update';
@@ -144,6 +151,27 @@ include __DIR__ . '/includes/admin-header.php';
                 <dd><?= nl2br(e((string) $value)) ?></dd>
             <?php endforeach; ?>
         </dl>
+    <?php endif; ?>
+
+    <?php if ($orderUploads): ?>
+        <h2>Uploaded Files</h2>
+        <div class="order-upload-list">
+            <?php foreach ($orderUploads as $upload): ?>
+                <article class="order-upload-card">
+                    <strong><?= e(ucfirst((string) $upload['upload_type'])) ?></strong><br>
+                    <a href="../<?= e($upload['file_path']) ?>" target="_blank" rel="noopener">
+                        <?= e($upload['original_name'] ?: basename((string) $upload['file_path'])) ?>
+                    </a>
+                    <br>
+                    <small>
+                        <?= e($upload['mime_type'] ?? '') ?>
+                        <?php if ($upload['file_size']): ?>
+                            · <?= e(number_format(((int) $upload['file_size']) / 1024, 1)) ?> KB
+                        <?php endif; ?>
+                    </small>
+                </article>
+            <?php endforeach; ?>
+        </div>
     <?php endif; ?>
 
     <h2>Contract</h2>
