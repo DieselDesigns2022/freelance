@@ -720,3 +720,9 @@ button:disabled,
         grid-template-columns: 1fr;
     }
 }
+
+/* Phase 2.1 order form helper text */
+.request-form small {
+    color: var(--teal);
+    font-weight: 800;
+}

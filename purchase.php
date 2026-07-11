@@ -35,7 +35,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $product) {
         $intakeAnswers = [];
 
         if ($isShopify) {
-            $hasShopifySite = trim($_POST['has_shopify_site'] ?? '');
             $shopifyStoreUrl = trim($_POST['shopify_store_url'] ?? '');
 
             if ($shopifyStoreUrl !== '' && !preg_match('#^https?://#i', $shopifyStoreUrl)) {
@@ -43,11 +42,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $product) {
             }
 
             $intakeAnswers = [
-                'has_shopify_site' => $hasShopifySite,
                 'shopify_store_url' => $shopifyStoreUrl,
                 'shopify_collaborator_code' => trim($_POST['shopify_collaborator_code'] ?? ''),
                 'top_bar_text' => trim($_POST['top_bar_text'] ?? ''),
                 'scrolling_banner_text' => trim($_POST['scrolling_banner_text'] ?? ''),
+                'featured_collections' => trim($_POST['featured_collections'] ?? ''),
+                'featured_products' => trim($_POST['featured_products'] ?? ''),
+                'new_products_collection' => trim($_POST['new_products_collection'] ?? ''),
+                'trending_products_collection' => trim($_POST['trending_products_collection'] ?? ''),
                 'reviews_app' => trim($_POST['reviews_app'] ?? ''),
             ];
 
@@ -66,18 +68,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $product) {
         }
 
         if ($isShopify) {
-            if (!in_array($intakeAnswers['has_shopify_site'], ['yes', 'no'], true)) {
-                $errors[] = 'Please tell us whether you already have a Shopify website.';
+            if ($intakeAnswers['shopify_store_url'] === '') {
+                $errors[] = 'Shopify URL is required.';
             }
 
-            if ($intakeAnswers['has_shopify_site'] === 'yes') {
-                if ($intakeAnswers['shopify_store_url'] === '') {
-                    $errors[] = 'Shopify store link is required when you already have a Shopify website.';
-                }
-
-                if (!preg_match('/^\d{4}$/', $intakeAnswers['shopify_collaborator_code'])) {
-                    $errors[] = 'Shopify collaborator request code must be the 4 digit code from Shopify.';
-                }
+            if (!preg_match('/^\d{4}$/', $intakeAnswers['shopify_collaborator_code'])) {
+                $errors[] = 'Shopify collaborator request code must be the 4 digit code from Shopify.';
             }
 
             if ($intakeAnswers['scrolling_banner_text'] === '') {
@@ -165,7 +161,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $product) {
                 if ($isShopify && table_exists($pdo, 'order_uploads')) {
                     $uploadGroups = [
                         'logo_files' => 'logo',
-                        'example_files' => 'example',
                     ];
 
                     foreach ($uploadGroups as $fieldName => $uploadType) {
@@ -317,32 +312,19 @@ include __DIR__ . '/includes/header.php';
             <?php if ($product['service_type'] === 'shopify_makeover'): ?>
                 <p class="notice">Do not enter Shopify admin passwords here. Diesel Designs only needs the collaborator request code when you already have a Shopify website.</p>
 
-                <label>Do you already have a Shopify website? *
-                    <select name="has_shopify_site" required>
-                        <option value="">Choose one</option>
-                        <option value="yes" <?= ($values['has_shopify_site'] ?? '') === 'yes' ? 'selected' : '' ?>>Yes</option>
-                        <option value="no" <?= ($values['has_shopify_site'] ?? '') === 'no' ? 'selected' : '' ?>>No</option>
-                    </select>
+                <label>What is your Shopify URL? *
+                    <input name="shopify_store_url" maxlength="500" required placeholder="username.myshopify.com" value="<?= e($values['shopify_store_url'] ?? '') ?>">
                     <small>Your Shopify link is usually similar to username.myshopify.com.</small>
                 </label>
 
-                <label>Shopify store link
-                    <input name="shopify_store_url" maxlength="500" placeholder="username.myshopify.com" value="<?= e($values['shopify_store_url'] ?? '') ?>">
-                </label>
-
-                <label>Shopify Collaborator Request Code
-                    <input name="shopify_collaborator_code" maxlength="4" pattern="[0-9]{4}" value="<?= e($values['shopify_collaborator_code'] ?? '') ?>">
-                    <small>Go to Settings → Users → Security, then scroll down to find the 4 digit code. Skip this if you do not have a Shopify website yet.</small>
+                <label>Shopify Collaborator Request Code *
+                    <input name="shopify_collaborator_code" maxlength="4" pattern="[0-9]{4}" required value="<?= e($values['shopify_collaborator_code'] ?? '') ?>">
+                    <small>Go to Settings → Users → Security, then scroll down to find the 4 digit code. If you do not have a Shopify website yet, skip this question on the custom build form.</small>
                 </label>
 
                 <label>Upload your logo(s) *
                     <input type="file" name="logo_files[]" accept="image/jpeg,image/png,image/webp,application/pdf" multiple required>
                     <small>PNG preferred. Please upload high-quality logo files with a transparent background when possible. Diesel Designs will not edit logos unless discussed and paid for before the project.</small>
-                </label>
-
-                <label>Upload examples or inspiration files
-                    <input type="file" name="example_files[]" accept="image/jpeg,image/png,image/webp,application/pdf" multiple>
-                    <small>Optional. Upload screenshots, examples, or references if they are helpful.</small>
                 </label>
 
                 <label>What text would you like in the thin bar at the very top of the website?
@@ -353,6 +335,24 @@ include __DIR__ . '/includes/header.php';
                 <label>Scrolling banner text *
                     <input name="scrolling_banner_text" maxlength="190" required value="<?= e($values['scrolling_banner_text'] ?? '') ?>">
                     <small>Use “-” between phrases. Example: Welcome - Free shipping. Maximum of 2 phrases.</small>
+                </label>
+
+                <label>Do you have any collections you'd like featured on the home page? If yes, what are they?
+                    <textarea name="featured_collections"><?= e($values['featured_collections'] ?? '') ?></textarea>
+                </label>
+
+                <label>Do you have any specific products you want featured on the home page? If so, what are they?
+                    <textarea name="featured_products"><?= e($values['featured_products'] ?? '') ?></textarea>
+                </label>
+
+                <label>What is the name of your collection for NEW products?
+                    <input name="new_products_collection" maxlength="190" value="<?= e($values['new_products_collection'] ?? '') ?>">
+                    <small>If you do not have a collection for this yet, please create one first and then put the name of the collection in this field.</small>
+                </label>
+
+                <label>What is the name of your collection for TRENDING / POPULAR / HOT products?
+                    <input name="trending_products_collection" maxlength="190" value="<?= e($values['trending_products_collection'] ?? '') ?>">
+                    <small>If you do not have a collection for this yet, please create one first and then put the name of the collection in this field.</small>
                 </label>
 
                 <label>Do you have a reviews app installed and want reviews displayed on your homepage?
