@@ -30,54 +30,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $product) {
         $isShopify = $product['service_type'] === 'shopify_makeover';
         $name = trim($_POST['name'] ?? '');
         $email = trim($_POST['email'] ?? '');
-        $businessName = trim($_POST['business_name'] ?? '');
+        $businessName = null;
         $url = trim($_POST['website_url'] ?? '');
         $intakeAnswers = [];
 
         if ($isShopify) {
+            $hasShopifySite = trim($_POST['has_shopify_site'] ?? '');
+            $shopifyStoreUrl = trim($_POST['shopify_store_url'] ?? '');
+
+            if ($shopifyStoreUrl !== '' && !preg_match('#^https?://#i', $shopifyStoreUrl)) {
+                $shopifyStoreUrl = 'https://' . $shopifyStoreUrl;
+            }
+
             $intakeAnswers = [
-                'shopify_store_url' => trim($_POST['shopify_store_url'] ?? ''),
-                'shopify_store_name' => trim($_POST['shopify_store_name'] ?? ''),
-                'main_goal' => trim($_POST['main_goal'] ?? ''),
-                'brand_colors' => trim($_POST['brand_colors'] ?? ''),
-                'asset_link' => trim($_POST['asset_link'] ?? ''),
-                'featured_products' => trim($_POST['featured_products'] ?? ''),
-                'requested_sections' => trim($_POST['requested_sections'] ?? ''),
-                'inspiration_links' => trim($_POST['inspiration_links'] ?? ''),
-                'launch_timing' => trim($_POST['launch_timing'] ?? ''),
-                'extra_notes' => trim($_POST['extra_notes'] ?? ''),
+                'has_shopify_site' => $hasShopifySite,
+                'shopify_store_url' => $shopifyStoreUrl,
+                'shopify_collaborator_code' => trim($_POST['shopify_collaborator_code'] ?? ''),
+                'top_bar_text' => trim($_POST['top_bar_text'] ?? ''),
+                'scrolling_banner_text' => trim($_POST['scrolling_banner_text'] ?? ''),
+                'reviews_app' => trim($_POST['reviews_app'] ?? ''),
             ];
-            $url = $intakeAnswers['shopify_store_url'];
+
+            $url = $shopifyStoreUrl;
         }
 
         if ($name === '') {
-            $errors[] = 'Name is required.';
+            $errors[] = 'First and last name is required.';
         }
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $errors[] = 'Valid email is required.';
+            $errors[] = 'A valid email address is required.';
         }
-        if ($businessName === '') {
-            $errors[] = 'Business name is required.';
-        }
+
         if ($url !== '' && !valid_url_or_blank($url)) {
-            $errors[] = 'Website/platform URL must start with http:// or https://.';
-        }
-        if ($isShopify && $intakeAnswers['asset_link'] !== '' && !valid_url_or_blank($intakeAnswers['asset_link'])) {
-            $errors[] = 'Logo/branding asset link must start with http:// or https://.';
+            $errors[] = 'Website/platform URL must be a valid link, like username.myshopify.com.';
         }
 
         if ($isShopify) {
-            $requiredShopifyFields = [
-                'main_goal' => 'Main goal',
-                'brand_colors' => 'Brand colors',
-                'featured_products' => 'Products or collections to feature',
-                'requested_sections' => 'Pages/sections to focus on',
-            ];
+            if (!in_array($intakeAnswers['has_shopify_site'], ['yes', 'no'], true)) {
+                $errors[] = 'Please tell us whether you already have a Shopify website.';
+            }
 
-            foreach ($requiredShopifyFields as $key => $label) {
-                if ($intakeAnswers[$key] === '') {
-                    $errors[] = $label . ' is required.';
+            if ($intakeAnswers['has_shopify_site'] === 'yes') {
+                if ($intakeAnswers['shopify_store_url'] === '') {
+                    $errors[] = 'Shopify store link is required when you already have a Shopify website.';
                 }
+
+                if (!preg_match('/^\d{4}$/', $intakeAnswers['shopify_collaborator_code'])) {
+                    $errors[] = 'Shopify collaborator request code must be the 4 digit code from Shopify.';
+                }
+            }
+
+            if ($intakeAnswers['scrolling_banner_text'] === '') {
+                $errors[] = 'Scrolling banner text is required.';
+            }
+
+            $bannerParts = array_values(array_filter(array_map('trim', explode('-', $intakeAnswers['scrolling_banner_text']))));
+            if (count($bannerParts) > 2) {
+                $errors[] = 'Scrolling banner text can have a maximum of 2 phrases separated by a dash.';
+            }
+
+            $logoErrors = $_FILES['logo_files']['error'] ?? [];
+            $hasLogoUpload = false;
+
+            if (is_array($logoErrors)) {
+                foreach ($logoErrors as $logoError) {
+                    if ((int) $logoError !== UPLOAD_ERR_NO_FILE) {
+                        $hasLogoUpload = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!$hasLogoUpload) {
+                $errors[] = 'Please upload at least one logo file.';
             }
         }
 
@@ -137,6 +162,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $product) {
                 $orderNumber = order_number($orderId);
                 $pdo->prepare('UPDATE orders SET order_number = ? WHERE id = ?')->execute([$orderNumber, $orderId]);
 
+                if ($isShopify && table_exists($pdo, 'order_uploads')) {
+                    $uploadGroups = [
+                        'logo_files' => 'logo',
+                        'example_files' => 'example',
+                    ];
+
+                    foreach ($uploadGroups as $fieldName => $uploadType) {
+                        foreach (($_FILES[$fieldName]['name'] ?? []) as $idx => $unused) {
+                            $file = [
+                                'name' => $_FILES[$fieldName]['name'][$idx] ?? '',
+                                'type' => $_FILES[$fieldName]['type'][$idx] ?? '',
+                                'tmp_name' => $_FILES[$fieldName]['tmp_name'][$idx] ?? '',
+                                'error' => $_FILES[$fieldName]['error'][$idx] ?? UPLOAD_ERR_NO_FILE,
+                                'size' => $_FILES[$fieldName]['size'][$idx] ?? 0,
+                            ];
+
+                            [$asset, $uploadError] = upload_order_asset($file);
+
+                            if ($uploadError) {
+                                throw new RuntimeException($uploadError);
+                            }
+
+                            if ($asset) {
+                                $pdo->prepare(
+                                    'INSERT INTO order_uploads '
+                                    . '(order_id,file_path,original_name,mime_type,file_size,upload_type,created_at) '
+                                    . 'VALUES (?,?,?,?,?,?,NOW())'
+                                )->execute([
+                                    $orderId,
+                                    $asset['path'],
+                                    $asset['original_name'],
+                                    $asset['mime_type'],
+                                    $asset['file_size'],
+                                    $uploadType,
+                                ]);
+                            }
+                        }
+                    }
+                }
+
                 $contractBody = $product['contract_body'];
                 $placeholderData = array_merge($intakeAnswers, [
                     'client_name' => $name,
@@ -175,7 +240,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $product) {
                 if ($pdo->inTransaction()) {
                     $pdo->rollBack();
                 }
-                $errors[] = 'We could not start this order. Please try again or contact Diesel Designs.';
+                $errors[] = $e instanceof RuntimeException
+                    ? $e->getMessage()
+                    : 'We could not start this order. Please try again or contact Diesel Designs.';
             }
 
             if (!$errors) {
@@ -233,72 +300,64 @@ include __DIR__ . '/includes/header.php';
             <p class="error-text"><?= e($error) ?></p>
         <?php endforeach; ?>
 
-        <form method="post" class="admin-form request-form">
+        <form method="post" enctype="multipart/form-data" class="admin-form request-form">
             <?= csrf_field() ?>
             <input type="hidden" name="product_slug" value="<?= e($slug) ?>">
             <label class="honeypot" aria-hidden="true">Leave blank<input name="website_url_confirm" tabindex="-1"></label>
 
-            <label>Name *
+            <label>First &amp; Last name *
                 <input name="name" maxlength="190" required value="<?= e($values['name'] ?? '') ?>">
             </label>
 
-            <label>Email *
+            <label>What is your email address? *
                 <input type="email" name="email" maxlength="190" required value="<?= e($values['email'] ?? '') ?>">
-            </label>
-
-            <label>Business name *
-                <input name="business_name" maxlength="190" required value="<?= e($values['business_name'] ?? '') ?>">
-            </label>
-
-            <label>Phone
-                <input name="phone" maxlength="100" value="<?= e($values['phone'] ?? '') ?>">
-            </label>
-
-            <label>Preferred contact method
-                <input name="preferred_contact_method" maxlength="50" value="<?= e($values['preferred_contact_method'] ?? '') ?>">
+                <small>We may need to contact you for questions or follow-ups.</small>
             </label>
 
             <?php if ($product['service_type'] === 'shopify_makeover'): ?>
-                <p class="notice">Do not enter Shopify admin passwords here. If access is needed, Diesel Designs will request it separately.</p>
+                <p class="notice">Do not enter Shopify admin passwords here. Diesel Designs only needs the collaborator request code when you already have a Shopify website.</p>
 
-                <label>Current Shopify store URL
-                    <input type="url" name="shopify_store_url" maxlength="500" value="<?= e($values['shopify_store_url'] ?? '') ?>">
+                <label>Do you already have a Shopify website? *
+                    <select name="has_shopify_site" required>
+                        <option value="">Choose one</option>
+                        <option value="yes" <?= ($values['has_shopify_site'] ?? '') === 'yes' ? 'selected' : '' ?>>Yes</option>
+                        <option value="no" <?= ($values['has_shopify_site'] ?? '') === 'no' ? 'selected' : '' ?>>No</option>
+                    </select>
+                    <small>Your Shopify link is usually similar to username.myshopify.com.</small>
                 </label>
 
-                <label>Shopify store/business name
-                    <input name="shopify_store_name" maxlength="190" value="<?= e($values['shopify_store_name'] ?? '') ?>">
+                <label>Shopify store link
+                    <input name="shopify_store_url" maxlength="500" placeholder="username.myshopify.com" value="<?= e($values['shopify_store_url'] ?? '') ?>">
                 </label>
 
-                <label>Main goal for the revamp *
-                    <textarea name="main_goal" required><?= e($values['main_goal'] ?? '') ?></textarea>
+                <label>Shopify Collaborator Request Code
+                    <input name="shopify_collaborator_code" maxlength="4" pattern="[0-9]{4}" value="<?= e($values['shopify_collaborator_code'] ?? '') ?>">
+                    <small>Go to Settings → Users → Security, then scroll down to find the 4 digit code. Skip this if you do not have a Shopify website yet.</small>
                 </label>
 
-                <label>Brand colors *
-                    <textarea name="brand_colors" required><?= e($values['brand_colors'] ?? '') ?></textarea>
+                <label>Upload your logo(s) *
+                    <input type="file" name="logo_files[]" accept="image/jpeg,image/png,image/webp,application/pdf" multiple required>
+                    <small>PNG preferred. Please upload high-quality logo files with a transparent background when possible. Diesel Designs will not edit logos unless discussed and paid for before the project.</small>
                 </label>
 
-                <label>Logo/branding asset link
-                    <input type="url" name="asset_link" maxlength="500" value="<?= e($values['asset_link'] ?? '') ?>">
+                <label>Upload examples or inspiration files
+                    <input type="file" name="example_files[]" accept="image/jpeg,image/png,image/webp,application/pdf" multiple>
+                    <small>Optional. Upload screenshots, examples, or references if they are helpful.</small>
                 </label>
 
-                <label>Products or collections to feature *
-                    <textarea name="featured_products" required><?= e($values['featured_products'] ?? '') ?></textarea>
+                <label>What text would you like in the thin bar at the very top of the website?
+                    <input name="top_bar_text" maxlength="190" value="<?= e($values['top_bar_text'] ?? '') ?>">
+                    <small>Example: Welcome to the store, free shipping, or a short announcement.</small>
                 </label>
 
-                <label>Pages/sections you want focused on *
-                    <textarea name="requested_sections" required><?= e($values['requested_sections'] ?? '') ?></textarea>
+                <label>Scrolling banner text *
+                    <input name="scrolling_banner_text" maxlength="190" required value="<?= e($values['scrolling_banner_text'] ?? '') ?>">
+                    <small>Use “-” between phrases. Example: Welcome - Free shipping. Maximum of 2 phrases.</small>
                 </label>
 
-                <label>Inspiration links
-                    <textarea name="inspiration_links"><?= e($values['inspiration_links'] ?? '') ?></textarea>
-                </label>
-
-                <label>Deadline or preferred launch timing
-                    <textarea name="launch_timing"><?= e($values['launch_timing'] ?? '') ?></textarea>
-                </label>
-
-                <label>Extra notes
-                    <textarea name="extra_notes"><?= e($values['extra_notes'] ?? '') ?></textarea>
+                <label>Do you have a reviews app installed and want reviews displayed on your homepage?
+                    <textarea name="reviews_app"><?= e($values['reviews_app'] ?? '') ?></textarea>
+                    <small>Include the app name if yes. Note: Diesel Designs does not install apps as part of this order.</small>
                 </label>
             <?php else: ?>
                 <label>Website/platform URL
