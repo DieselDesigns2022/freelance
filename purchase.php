@@ -50,6 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $product) {
                 'featured_products' => trim($_POST['featured_products'] ?? ''),
                 'new_products_collection' => trim($_POST['new_products_collection'] ?? ''),
                 'trending_products_collection' => trim($_POST['trending_products_collection'] ?? ''),
+                'collection_cover_names' => trim($_POST['collection_cover_names'] ?? ''),
                 'reviews_app' => trim($_POST['reviews_app'] ?? ''),
             ];
 
@@ -260,14 +261,14 @@ $pageTitle = 'Begin Purchase | Diesel Designs';
 $metaDescription = 'Start a Diesel Designs service order and receive a secure contract signing link.';
 include __DIR__ . '/includes/header.php';
 ?>
-<section class="page-hero">
+<section class="page-hero purchase-page-hero">
     <h1>Purchase / Start Order</h1>
     <?php if ($product): ?>
         <p><?= e($product['name']) ?> · <?= e(money_format_dd($product['price'])) ?></p>
     <?php endif; ?>
 </section>
 
-<section class="section">
+<section class="section purchase-section">
     <?php if (!$product): ?>
         <div class="empty">
             <h2>Service not available</h2>
@@ -305,36 +306,36 @@ include __DIR__ . '/includes/header.php';
             </label>
 
             <label>What is your email address? *
-                <input type="email" name="email" maxlength="190" required value="<?= e($values['email'] ?? '') ?>">
                 <small>We may need to contact you for questions or follow-ups.</small>
+                <input type="email" name="email" maxlength="190" required value="<?= e($values['email'] ?? '') ?>">
             </label>
 
             <?php if ($product['service_type'] === 'shopify_makeover'): ?>
-                <p class="notice">Do not enter Shopify admin passwords here. Diesel Designs only needs the collaborator request code when you already have a Shopify website.</p>
-
                 <label>What is your Shopify URL? *
-                    <input name="shopify_store_url" maxlength="500" required placeholder="username.myshopify.com" value="<?= e($values['shopify_store_url'] ?? '') ?>">
                     <small>Your Shopify link is usually similar to username.myshopify.com.</small>
+                    <input name="shopify_store_url" maxlength="500" required placeholder="username.myshopify.com" value="<?= e($values['shopify_store_url'] ?? '') ?>">
                 </label>
 
                 <label>Shopify Collaborator Request Code *
+                    <small>Go to Settings → Users → Security, then scroll down to find the 4 digit code.</small>
                     <input name="shopify_collaborator_code" maxlength="4" pattern="[0-9]{4}" required value="<?= e($values['shopify_collaborator_code'] ?? '') ?>">
-                    <small>Go to Settings → Users → Security, then scroll down to find the 4 digit code. If you do not have a Shopify website yet, skip this question on the custom build form.</small>
                 </label>
 
+                <p class="notice">Do not enter your Shopify admin password. Diesel Designs only needs the collaborator request code so access can be requested safely through Shopify.</p>
+
                 <label>Upload your logo(s) *
-                    <input type="file" name="logo_files[]" accept="image/jpeg,image/png,image/webp,application/pdf" multiple required>
                     <small>PNG preferred. Please upload high-quality logo files with a transparent background when possible. Diesel Designs will not edit logos unless discussed and paid for before the project.</small>
+                    <input type="file" name="logo_files[]" accept="image/jpeg,image/png,image/webp,application/pdf" multiple required>
                 </label>
 
                 <label>What text would you like in the thin bar at the very top of the website?
-                    <input name="top_bar_text" maxlength="190" value="<?= e($values['top_bar_text'] ?? '') ?>">
                     <small>Example: Welcome to the store, free shipping, or a short announcement.</small>
+                    <input name="top_bar_text" maxlength="190" value="<?= e($values['top_bar_text'] ?? '') ?>">
                 </label>
 
                 <label>Scrolling banner text *
-                    <input name="scrolling_banner_text" maxlength="190" required value="<?= e($values['scrolling_banner_text'] ?? '') ?>">
                     <small>Use “-” between phrases. Example: Welcome - Free shipping. Maximum of 2 phrases.</small>
+                    <input name="scrolling_banner_text" maxlength="190" required value="<?= e($values['scrolling_banner_text'] ?? '') ?>">
                 </label>
 
                 <label>Do you have any collections you'd like featured on the home page? If yes, what are they?
@@ -346,18 +347,23 @@ include __DIR__ . '/includes/header.php';
                 </label>
 
                 <label>What is the name of your collection for NEW products?
+                    <small>If you do not have a collection for this yet, please create one first and then put the name of the collection in this field. Example: New Releases.</small>
                     <input name="new_products_collection" maxlength="190" value="<?= e($values['new_products_collection'] ?? '') ?>">
-                    <small>If you do not have a collection for this yet, please create one first and then put the name of the collection in this field.</small>
                 </label>
 
                 <label>What is the name of your collection for TRENDING / POPULAR / HOT products?
-                    <input name="trending_products_collection" maxlength="190" value="<?= e($values['trending_products_collection'] ?? '') ?>">
                     <small>If you do not have a collection for this yet, please create one first and then put the name of the collection in this field.</small>
+                    <input name="trending_products_collection" maxlength="190" value="<?= e($values['trending_products_collection'] ?? '') ?>">
+                </label>
+
+                <label>Please list the categories or product collection names you would like collection cover images created for.
+                    <small>Your order includes up to 20 collection cover images. Additional collection covers are $2 each and must be discussed and paid for before submitting this form.</small>
+                    <textarea name="collection_cover_names"><?= e($values['collection_cover_names'] ?? '') ?></textarea>
                 </label>
 
                 <label>Do you have a reviews app installed and want reviews displayed on your homepage?
-                    <textarea name="reviews_app"><?= e($values['reviews_app'] ?? '') ?></textarea>
                     <small>Include the app name if yes. Note: Diesel Designs does not install apps as part of this order.</small>
+                    <textarea name="reviews_app"><?= e($values['reviews_app'] ?? '') ?></textarea>
                 </label>
             <?php else: ?>
                 <label>Website/platform URL

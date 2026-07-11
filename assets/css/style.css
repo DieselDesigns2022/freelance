@@ -773,3 +773,47 @@ button:disabled,
 .request-form label {
     gap: .45rem;
 }
+
+/* Phase 2.1 purchase form spacing and helper cleanup */
+.purchase-page-hero {
+    padding-top: clamp(2rem, 4vw, 3.5rem);
+    padding-bottom: .75rem;
+}
+
+.purchase-page-hero h1 {
+    margin-bottom: .5rem;
+}
+
+.purchase-section {
+    padding-top: 0;
+}
+
+.request-form {
+    grid-template-columns: 1fr !important;
+    max-width: 860px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.request-form > label,
+.request-form > .notice,
+.request-form > button,
+.request-form > .honeypot {
+    grid-column: 1 / -1;
+}
+
+.request-form small {
+    display: block;
+    color: var(--teal);
+    font-weight: 400 !important;
+    line-height: 1.45;
+    margin: .3rem 0 .4rem;
+}
+
+.request-form .notice {
+    margin: 0;
+    padding: 1rem 1.1rem;
+    border: 1px solid rgba(22, 224, 207, .28);
+    border-radius: 18px;
+    background: rgba(22, 224, 207, .06);
+}
