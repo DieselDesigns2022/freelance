@@ -17,10 +17,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $slug = trim($_POST['slug'] ?? '') ?: slugify($name);
     $shortDescription = trim($_POST['short_description'] ?? '');
     $serviceType = $_POST['service_type'] ?? '';
-    $fulfillmentType = $_POST['fulfillment_type'] ?? '';
+    $fulfillmentType = 'service';
     $status = $_POST['status'] ?? 'draft';
     $price = trim($_POST['price'] ?? '');
-    $deposit = trim($_POST['deposit_amount'] ?? '');
+    $demoUrl = trim($_POST['demo_url'] ?? '');
+    $demoPassword = trim($_POST['demo_password'] ?? '');
     $contractTemplateId = trim($_POST['contract_template_id'] ?? '');
     $contractTemplate = null;
 
@@ -33,20 +34,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!in_array($serviceType, allowed_service_types(), true)) {
         $errors[] = 'Choose a valid service type.';
     }
-    if (!in_array($fulfillmentType, allowed_fulfillment_types(), true)) {
-        $errors[] = 'Choose a valid fulfillment type.';
-    }
     if (!in_array($status, allowed_product_statuses(), true)) {
         $errors[] = 'Choose a valid status.';
     }
     if ($price === '' || !is_numeric($price) || (float) $price < 0) {
         $errors[] = 'Price must be a number greater than or equal to zero.';
     }
-    if ($deposit !== '' && (!is_numeric($deposit) || (float) $deposit < 0)) {
-        $errors[] = 'Deposit amount must be blank or a number greater than or equal to zero.';
-    }
-    if ($deposit !== '' && is_numeric($deposit) && is_numeric($price) && (float) $deposit > (float) $price) {
-        $errors[] = 'Deposit amount cannot be greater than the full price.';
+    if (!valid_url_or_blank($demoUrl)) {
+        $errors[] = 'Demo URL must be blank or start with http:// or https://.';
     }
 
     if ($contractTemplateId !== '') {
@@ -69,11 +64,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!$errors) {
-        db()->prepare(
+        $insertStmt = db()->prepare(
             'INSERT INTO products '
-            . '(name,slug,short_description,full_description,service_type,fulfillment_type,price,deposit_amount,turnaround_text,includes_text,requirements_text,status,is_featured,sort_order,contract_template_id,created_at) '
-            . 'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())'
-        )->execute([
+            . '(name,slug,short_description,full_description,service_type,fulfillment_type,price,deposit_amount,turnaround_text,includes_text,requirements_text,status,is_featured,sort_order,contract_template_id,demo_url,demo_password,created_at) '
+            . 'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())'
+        );
+        $insertStmt->execute([
             $name,
             $slug,
             $shortDescription,
@@ -81,18 +77,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $serviceType,
             $fulfillmentType,
             (float) $price,
-            $deposit === '' ? null : (float) $deposit,
-            trim($_POST['turnaround_text'] ?? '') ?: null,
-            trim($_POST['includes_text'] ?? '') ?: null,
-            trim($_POST['requirements_text'] ?? '') ?: null,
+            null,
+            null,
+            null,
+            null,
             $status,
             isset($_POST['is_featured']) ? 1 : 0,
             (int) ($_POST['sort_order'] ?? 0),
             $contractTemplateId === '' ? null : (int) $contractTemplateId,
+            $demoUrl ?: null,
+            $demoPassword ?: null,
         ]);
 
-        flash('success', 'Product created.');
-        redirect('products.php');
+        $newProductId = (int) db()->lastInsertId();
+        flash('success', 'Product created. Add screenshots/images on this edit page.');
+        redirect('products-edit.php?id=' . $newProductId);
     }
 }
 

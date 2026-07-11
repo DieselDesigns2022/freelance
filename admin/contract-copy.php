@@ -29,7 +29,10 @@ function admin_signed_contract_html(array $contract): string
         . '<strong>Typed signature:</strong> ' . e($contract['typed_signature']) . '<br>'
         . '<strong>Signed at:</strong> ' . e($contract['signed_at']) . '<br>'
         . '<strong>IP:</strong> ' . e($contract['signer_ip']) . '<br>'
-        . '<strong>User agent:</strong> ' . e($contract['signer_user_agent']) . '</p>'
+        . '<strong>User agent:</strong> ' . e($contract['signer_user_agent']) . '<br>'
+        . '<strong>Terms agreed at:</strong> ' . e($contract['terms_agreed_at']) . '<br>'
+        . '<strong>E-sign consent at:</strong> ' . e($contract['esign_agreed_at']) . '<br>'
+        . '<strong>Signed contract hash:</strong> ' . e($contract['signed_contract_hash']) . '</p>'
         . '</body></html>';
 }
 
@@ -46,10 +49,13 @@ include __DIR__ . '/includes/admin-header.php';
 <section class="admin-card">
     <?php if (!$contract): ?>
         <h1>Contract not found</h1>
-    <?php elseif ($contract['status'] !== 'signed'): ?>
+    <?php elseif (in_array($contract['status'], signable_contract_statuses(), true)): ?>
         <h1>Signature pending</h1>
         <p>This contract is not signed yet. Signed-contract downloads are available only after signing.</p>
-    <?php else: ?>
+    <?php elseif ($contract['status'] === 'void'): ?>
+        <h1>Contract unavailable</h1>
+        <p>This contract has been voided and cannot be downloaded as a signed contract copy.</p>
+    <?php elseif ($contract['status'] === 'signed'): ?>
         <h1>Signed Contract Copy</h1>
         <p>
             <button class="btn" onclick="window.print()">Print / Save as PDF</button>
@@ -72,8 +78,14 @@ include __DIR__ . '/includes/admin-header.php';
             <strong>Typed signature:</strong> <?= e($contract['typed_signature']) ?><br>
             <strong>Signed at:</strong> <?= e($contract['signed_at']) ?><br>
             <strong>IP:</strong> <?= e($contract['signer_ip']) ?><br>
-            <strong>User agent:</strong> <?= e($contract['signer_user_agent']) ?>
+            <strong>User agent:</strong> <?= e($contract['signer_user_agent']) ?><br>
+            <strong>Terms agreed at:</strong> <?= e($contract['terms_agreed_at']) ?><br>
+            <strong>E-sign consent at:</strong> <?= e($contract['esign_agreed_at']) ?><br>
+            <strong>Signed contract hash:</strong> <?= e($contract['signed_contract_hash']) ?>
         </p>
+    <?php else: ?>
+        <h1>Contract unavailable</h1>
+        <p>This contract cannot be viewed right now. Please contact Diesel Designs if you need help.</p>
     <?php endif; ?>
 </section>
 <?php include __DIR__ . '/includes/admin-footer.php'; ?>

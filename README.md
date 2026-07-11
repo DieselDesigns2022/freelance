@@ -85,7 +85,7 @@ The application has:
 
 ### Not Implemented
 
-- General email-sending contact form is not implemented. The website request form is implemented, but no email notification is sent.
+- General contact/website request email sending is not implemented. Website requests are stored in admin without email notification. Phase 2.1 order notifications are optional and use PHP `mail()` only when `ADMIN_ORDER_EMAIL` or `ORDER_NOTIFY_EMAIL` is configured.
 - Pretty URL routing.
 - Canonical tags.
 - Open Graph metadata.
@@ -135,7 +135,7 @@ New admin pages:
 - `/admin/requests.php` and `/admin/request-view.php?id=...` — request review, status updates, admin notes, contact marking, archive, and delete.
 - `/admin/faqs.php`, `/admin/faqs-create.php`, and `/admin/faqs-edit.php?id=...` — FAQ management.
 
-No email sending, payment processing, or paid third-party services are implemented. Requests are stored in the admin panel only for now.
+General contact/website request email sending, payment processing, and paid third-party services are not implemented. Requests are stored in the admin panel only. Phase 2.1 order notifications are optional and use PHP `mail()` only when configured through `ADMIN_ORDER_EMAIL` or `ORDER_NOTIFY_EMAIL`.
 
 ## Phase 2 Storefront and Contract System
 
