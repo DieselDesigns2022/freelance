@@ -162,4 +162,12 @@ mysql -u <user> -p <database> < database/migrations/20260710_phase_2_store_contr
 
 After migration, create at least one active contract template in admin, then assign an active contract template to each product that should be purchasable. Public purchase is blocked for active products without an active contract template.
 
+For existing deployments that already applied Phase 2, also run the Phase 2.1 additive migration:
+
+```bash
+mysql -u <user> -p <database> < database/migrations/20260710_phase_2_1_shopify_revamp_flow.sql
+```
+
+Phase 2.1 adds product demo fields, product images, Shopify intake metadata, customer IP/user-agent capture, and contract signing audit fields. Payment remains manual, and there is no payment gateway deployment step.
+
 There is no payment gateway deployment step in Phase 2. Payment status is managed manually in admin. Signed contract downloads are HTML, so no PDF service or Composer dependency is required.

@@ -214,11 +214,74 @@ function create_contract_token(): string
 
 function render_contract_template(string $body, array $data): string
 {
+    $knownKeys = array_merge(contract_placeholder_keys(), array_keys($data));
     $replacements = [];
-    foreach ($data as $key => $value) {
-        $replacements['{{' . $key . '}}'] = (string) $value;
+
+    foreach ($knownKeys as $key) {
+        $value = $data[$key] ?? '';
+        $replacements['{{' . $key . '}}'] = $value === null || $value === '' ? 'N/A' : (string) $value;
     }
+
     return strtr($body, $replacements);
+}
+
+function contract_placeholder_keys(): array
+{
+    return [
+        'client_name', 'client_email', 'business_name', 'order_id', 'product_name', 'product_price',
+        'service_type', 'project_url', 'order_date', 'designer_name', 'site_name', 'shopify_store_url',
+        'shopify_store_name', 'main_goal', 'brand_colors', 'asset_link', 'featured_products',
+        'requested_sections', 'inspiration_links', 'launch_timing', 'extra_notes', 'intake_summary',
+    ];
+}
+
+function build_intake_summary(array $answers): string
+{
+    $labels = [
+        'shopify_store_url' => 'Current Shopify store URL',
+        'shopify_store_name' => 'Shopify store/business name',
+        'main_goal' => 'Main goal',
+        'brand_colors' => 'Brand colors',
+        'asset_link' => 'Logo/branding asset link',
+        'featured_products' => 'Products or collections to feature',
+        'requested_sections' => 'Pages/sections to focus on',
+        'inspiration_links' => 'Inspiration links',
+        'launch_timing' => 'Deadline or launch timing',
+        'extra_notes' => 'Extra notes',
+    ];
+    $lines = [];
+    foreach ($labels as $key => $label) {
+        $value = trim((string) ($answers[$key] ?? ''));
+        if ($value !== '') {
+            $lines[] = $label . ': ' . $value;
+        }
+    }
+    return implode("\n", $lines);
+}
+
+function signed_contract_hash(array $contract, string $legalName, string $typedSignature, string $signedAt): string
+{
+    return hash('sha256', implode('|', [
+        (string) ($contract['rendered_contract_snapshot'] ?? ''),
+        $legalName,
+        $typedSignature,
+        $signedAt,
+        (string) ($contract['order_id'] ?? ''),
+    ]));
+}
+
+function notify_admin_order_created(array $order, string $signingUrl): void
+{
+    $to = getenv('ADMIN_ORDER_EMAIL') ?: getenv('ORDER_NOTIFY_EMAIL') ?: '';
+    if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+        return;
+    }
+    $subject = 'New Diesel Designs order ' . ($order['order_number'] ?? '');
+    $message = "A new order was created.\n\nOrder: " . ($order['order_number'] ?? '')
+        . "\nCustomer: " . ($order['customer_name'] ?? '') . ' <' . ($order['customer_email'] ?? '') . '>'
+        . "\nService: " . ($order['product_name'] ?? '')
+        . "\nSigning link: " . $signingUrl . "\n";
+    @mail($to, $subject, $message, 'From: no-reply@' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
 }
 
 function order_number(int $id): string

@@ -46,3 +46,10 @@
 - Added admin CRUD for products and contract templates plus order management, manual payment status controls, contract sent/viewed/signed tracking, token regeneration before signing, and signed-contract HTML downloads.
 - Added additive database tables for products, contract templates, orders, and contract instances.
 - Kept payment handling manual; no payment gateway or PDF dependency was added.
+
+## Phase 2.1 - Shopify Revamp Product Flow
+- Added additive database migration `database/migrations/20260710_phase_2_1_shopify_revamp_flow.sql` for product demo fields, product images, order intake metadata, customer IP/user agent, and contract signing audit hash/consent timestamps.
+- Simplified admin product setup for current service-product flow and added Shopify Revamp demo/image support.
+- Added Shopify Revamp-specific public intake questions with a clear warning not to enter Shopify admin passwords.
+- Contract signing remains token based and manual-payment only; no live payment gateway, PDF generation, or initials support was added.
+- Optional order notification uses PHP `mail()` only when `ADMIN_ORDER_EMAIL` or `ORDER_NOTIFY_EMAIL` is configured.

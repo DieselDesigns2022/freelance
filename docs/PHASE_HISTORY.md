@@ -141,3 +141,6 @@ Implemented: public store/product/purchase/signing/copy routes; admin product CR
 Database changes: added `products`, `contract_templates`, `orders`, and `contract_instances` through `database/migrations/20260710_phase_2_store_contract_system.sql` and updated the canonical schema.
 
 Limitations: no live payment gateway, no PDF generation library, no public order listing, and raw signing tokens cannot be recovered after creation because only token hashes are stored. Deployment requires running the migration and creating/assigning active contract templates before products can be purchased publicly.
+
+## Phase 2.1 - Shopify Revamp Product Flow
+Phase 2.1 builds the first focused product/customer flow around Shopify Website Revamp services: admin product setup, screenshots, demo URL/password, Shopify-specific intake, contract placeholders, token signing audit fields, manual payment follow-up, and admin order review. It does not add Shopify admin password collection, account creation, payment gateways, PDFs, or initials support.

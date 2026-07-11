@@ -158,3 +158,7 @@ The storefront is intentionally framework-free and follows the existing include 
 Products are public only when `products.status = active`. Active products should have an active `contract_templates` assignment because `purchase.php` blocks checkout when a contract is missing or inactive. Orders snapshot product and contract metadata at creation time. Contract instances store the original template body snapshot and the rendered contract snapshot.
 
 Public signing links use a random token generated with `random_bytes()`. Only `hash('sha256', $token)` is stored. Admins cannot recover old raw tokens; they can generate a replacement signing link before signing, which updates the hash and displays the raw URL once for copying.
+
+## Phase 2.1 Shopify Revamp Development Notes
+
+Phase 2.1 makes Shopify Revamp the first focused product flow. Admin product edit supports screenshots/product images, and products support demo URL/password fields. `purchase.php` shows Shopify-specific intake fields for `shopify_makeover` products and warns customers not to enter Shopify admin passwords. Orders store intake JSON, a readable intake summary, and customer IP/user-agent data. Signing remains token-based, records consent timestamps and a signed-contract hash, and moves orders to `payment_pending` after signing. Diesel Designs sends payment instructions or an invoice manually; optional order notification is environment-configured through `ADMIN_ORDER_EMAIL` or `ORDER_NOTIFY_EMAIL`.

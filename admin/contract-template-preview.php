@@ -27,6 +27,17 @@ $rendered = render_contract_template($template['body'], [
     'order_date' => date('Y-m-d'),
     'designer_name' => 'Diesel Designs',
     'site_name' => 'Diesel Designs',
+    'shopify_store_url' => 'https://example.myshopify.com',
+    'shopify_store_name' => 'Sample Shopify Store',
+    'main_goal' => 'Refresh the homepage and product presentation.',
+    'brand_colors' => 'Black, cream, and gold',
+    'asset_link' => 'https://example.com/brand-assets',
+    'featured_products' => 'Bestsellers and summer collection',
+    'requested_sections' => 'Hero, featured products, footer, about section',
+    'inspiration_links' => 'https://example.com/inspiration',
+    'launch_timing' => 'Within 3 weeks',
+    'extra_notes' => 'Please keep the current logo.',
+    'intake_summary' => 'Sample Shopify Revamp intake summary.',
 ]);
 
 $adminTitle = 'Preview Contract';

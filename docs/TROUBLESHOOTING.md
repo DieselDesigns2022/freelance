@@ -151,6 +151,9 @@ mysql -u YOUR_USER -p YOUR_DATABASE < database/portfolio_schema.sql
 ### Store or admin product pages fail with missing table errors
 Run `database/migrations/20260710_phase_2_store_contract_system.sql` against the active MariaDB database.
 
+### Shopify Revamp product flow fails with missing column/table errors
+If product pages, product edit image management, purchase intake, signing, or signed contract copies fail with missing columns or tables such as `demo_url`, `demo_password`, `product_images`, `intake_answers_json`, `customer_ip`, `customer_user_agent`, `terms_agreed_at`, `esign_agreed_at`, or `signed_contract_hash`, the Phase 2.1 migration likely has not been run. Apply `database/migrations/20260710_phase_2_1_shopify_revamp_flow.sql` against the active MariaDB database.
+
 ### Store is empty
 Confirm products exist with `status = active`. Draft and archived products are intentionally hidden.
 

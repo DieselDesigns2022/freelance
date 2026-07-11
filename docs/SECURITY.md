@@ -109,7 +109,8 @@ Implemented:
 
 Not implemented:
 
-- No email sending is performed.
+- Website request submissions do not send email notifications.
+- Phase 2.1 order notifications are optional and use PHP `mail()` only when `ADMIN_ORDER_EMAIL` or `ORDER_NOTIFY_EMAIL` is configured; order creation must not depend on mail delivery.
 - No CAPTCHA or paid spam-protection service is used.
 
 ## Phase 2 Storefront and Contract Security
@@ -130,3 +131,9 @@ Not implemented:
 - Regenerating a signing link updates the stored token hash, so old raw links become invalid immediately.
 - `signed` contract status is produced only by the public signing flow after the signer completes required signature fields and confirmations.
 - Signed contract HTML downloads are available only when the contract instance status is `signed`.
+
+## Phase 2.1 Shopify Revamp security notes
+Product screenshots reuse the hardened `uploads/portfolio/` path and are validated by extension, MIME type, maximum 10MB size, randomized filenames, and constrained deletion. The Shopify Revamp intake form explicitly tells customers not to enter Shopify admin passwords. Signing remains token-hash based and noindexed; signed copies display legal name, typed signature, signed timestamp, IP address, user agent, terms/e-sign consent timestamps, and a SHA-256 hash of stable signing evidence. Payment remains manual only.
+
+## Phase 2.1 corrective hardening
+Order creation now wraps order and contract-instance writes in an explicit transaction with rollback on failure and a generic public error message. Admin signed-contract copies distinguish pending, voided, signed, and unexpected contract states, and downloads are still emitted only for signed contracts.

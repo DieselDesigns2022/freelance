@@ -204,3 +204,9 @@ Verify:
 - Verify signed contracts show the already-signed state, allow signed copy/download, and do not show admin regenerate or void controls.
 - Verify voided contracts show unavailable messaging, cannot be signed, cannot be downloaded as signed copies, and cannot generate replacement signing links.
 - Verify regenerating a signing link invalidates previously generated raw links.
+
+## Phase 2.1 testing checklist
+- Run `php -l` against every PHP file.
+- Run `git diff --check`.
+- If a MySQL/MariaDB client is available, apply `database/migrations/20260710_phase_2_1_shopify_revamp_flow.sql` to a temporary database.
+- Verify the manual flow: active contract template, active Shopify Make-Over product, image upload, demo URL/password display, Shopify intake order creation, token signing, manual payment-pending message, admin intake/audit review, and optional `ADMIN_ORDER_EMAIL`/`ORDER_NOTIFY_EMAIL` notification behavior when server mail is configured.

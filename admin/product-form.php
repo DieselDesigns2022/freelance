@@ -1,19 +1,29 @@
 <?php
 $serviceTypes = ['website_kit', 'website_build', 'shopify_makeover', 'website_revamp', 'custom_service'];
-$fulfillmentTypes = ['service', 'digital_kit', 'hybrid'];
 $statuses = ['draft', 'active', 'archived'];
 $templates = db()->query("SELECT id, title, version, status FROM contract_templates ORDER BY title")->fetchAll();
 ?>
 <form method="post" class="admin-form">
     <?= csrf_field() ?>
+    <input type="hidden" name="action" value="save">
 
-    <label>Name *
+    <label>Product name *
         <input name="name" required maxlength="255" value="<?= e($product['name'] ?? '') ?>">
     </label>
 
     <label>Slug
         <input name="slug" maxlength="255" value="<?= e($product['slug'] ?? '') ?>">
         <small>Leave blank to generate from name.</small>
+    </label>
+
+    <label>Product type / service type
+        <select name="service_type">
+            <?php foreach ($serviceTypes as $type): ?>
+                <option value="<?= e($type) ?>" <?= ($product['service_type'] ?? 'shopify_makeover') === $type ? 'selected' : '' ?>>
+                    <?= e(service_type_label($type)) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
     </label>
 
     <label>Short description *
@@ -24,46 +34,25 @@ $templates = db()->query("SELECT id, title, version, status FROM contract_templa
         <textarea name="full_description"><?= e($product['full_description'] ?? '') ?></textarea>
     </label>
 
-    <label>Service type
-        <select name="service_type">
-            <?php foreach ($serviceTypes as $type): ?>
-                <option value="<?= e($type) ?>" <?= ($product['service_type'] ?? '') === $type ? 'selected' : '' ?>><?= e(service_type_label($type)) ?></option>
-            <?php endforeach; ?>
-        </select>
-    </label>
-
-    <label>Fulfillment type
-        <select name="fulfillment_type">
-            <?php foreach ($fulfillmentTypes as $type): ?>
-                <option value="<?= e($type) ?>" <?= ($product['fulfillment_type'] ?? 'service') === $type ? 'selected' : '' ?>><?= e(fulfillment_type_label($type)) ?></option>
-            <?php endforeach; ?>
-        </select>
-    </label>
-
     <label>Price *
         <input name="price" type="number" step="0.01" min="0" required value="<?= e((string) ($product['price'] ?? '0.00')) ?>">
     </label>
 
-    <label>Deposit amount
-        <input name="deposit_amount" type="number" step="0.01" min="0" value="<?= e((string) ($product['deposit_amount'] ?? '')) ?>">
+    <label>Live demo URL
+        <input name="demo_url" type="url" maxlength="500" value="<?= e($product['demo_url'] ?? '') ?>">
+        <small>Optional. Must start with http:// or https://.</small>
     </label>
 
-    <label>Turnaround
-        <textarea name="turnaround_text"><?= e($product['turnaround_text'] ?? '') ?></textarea>
-    </label>
-
-    <label>Includes
-        <textarea name="includes_text"><?= e($product['includes_text'] ?? '') ?></textarea>
-    </label>
-
-    <label>Requirements
-        <textarea name="requirements_text"><?= e($product['requirements_text'] ?? '') ?></textarea>
+    <label>Demo password
+        <input name="demo_password" maxlength="255" value="<?= e($product['demo_password'] ?? '') ?>">
     </label>
 
     <label>Status
         <select name="status">
             <?php foreach ($statuses as $status): ?>
-                <option value="<?= e($status) ?>" <?= ($product['status'] ?? 'draft') === $status ? 'selected' : '' ?>><?= e(ucfirst($status)) ?></option>
+                <option value="<?= e($status) ?>" <?= ($product['status'] ?? 'draft') === $status ? 'selected' : '' ?>>
+                    <?= e(ucfirst($status)) ?>
+                </option>
             <?php endforeach; ?>
         </select>
     </label>

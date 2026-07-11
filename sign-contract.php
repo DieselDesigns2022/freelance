@@ -46,19 +46,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $contract) {
     }
 
     if (!$errors) {
+        $signedAt = date('Y-m-d H:i:s');
+        $hash = signed_contract_hash($contract, $legalName, $typedSignature, $signedAt);
         $signStmt = db()->prepare(
-            "UPDATE contract_instances SET status = 'signed', signed_at = NOW(), signer_legal_name = ?, typed_signature = ?, signer_ip = ?, signer_user_agent = ?, updated_at = NOW() WHERE id = ? AND status IN ('pending', 'sent', 'viewed')"
+            "UPDATE contract_instances SET status = 'signed', signed_at = ?, signer_legal_name = ?, typed_signature = ?, signer_ip = ?, signer_user_agent = ?, terms_agreed_at = ?, esign_agreed_at = ?, signed_contract_hash = ?, updated_at = NOW() WHERE id = ? AND status IN ('pending', 'sent', 'viewed')"
         );
         $signStmt->execute([
+            $signedAt,
             $legalName,
             $typedSignature,
             $_SERVER['REMOTE_ADDR'] ?? '',
             substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 500),
+            $signedAt,
+            $signedAt,
+            $hash,
             $contract['id'],
         ]);
 
         if ($signStmt->rowCount() > 0) {
-            db()->prepare("UPDATE orders SET contract_status = 'signed', order_status = 'contract_signed', updated_at = NOW() WHERE id = ?")
+            db()->prepare("UPDATE orders SET contract_status = 'signed', order_status = 'payment_pending', updated_at = NOW() WHERE id = ?")
                 ->execute([$contract['order_id']]);
             $signed = true;
             $contract['status'] = 'signed';
@@ -89,7 +95,7 @@ include __DIR__ . '/includes/header.php';
     <?php elseif ($signed): ?>
         <div class="empty success-message">
             <h2>Contract signed</h2>
-            <p>Thank you. Your signed contract has been stored on file.</p>
+            <p>Your contract has been signed. Payment is the next step. Diesel Designs will review your order and send payment instructions or an invoice. Work does not begin until the contract and payment are complete.</p>
             <p><a class="btn" href="contract-copy.php?token=<?= e($token) ?>">View / Download Contract Copy</a></p>
         </div>
     <?php elseif ($contract['status'] === 'signed'): ?>

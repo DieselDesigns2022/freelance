@@ -80,3 +80,9 @@ The app uses direct PHP files instead of a front controller.
 | GET/POST | `/admin/order-view.php?id=...` | Admin | Views order details, updates manual statuses, marks sent, voids unsigned contracts, and generates replacement signing links. |
 | GET | `/admin/contract-copy.php?id=...` | Admin | Views printable signed contract copy. |
 | GET | `/admin/contract-copy.php?id=...&download=1` | Admin | Downloads signed contract HTML only after signature. |
+
+## Phase 2.1 Shopify Revamp flow routes
+- `admin/products-create.php` and `admin/products-edit.php`: simplified product setup with demo URL/password and product image management on edit.
+- `product-service.php`: public product detail page with screenshots, demo link, optional demo password, and Order Now CTA.
+- `purchase.php`: Shopify Revamp intake form for `shopify_makeover` products plus the existing generic fallback for other service types.
+- `sign-contract.php`, `contract-copy.php`, and `admin/contract-copy.php`: token contract signing and signed-copy audit display. Payment remains manual; no payment gateway route exists.

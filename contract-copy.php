@@ -31,7 +31,10 @@ function signed_contract_html(array $contract): string
         . '<strong>Typed signature:</strong> ' . e($contract['typed_signature']) . '<br>'
         . '<strong>Signed at:</strong> ' . e($contract['signed_at']) . '<br>'
         . '<strong>IP:</strong> ' . e($contract['signer_ip']) . '<br>'
-        . '<strong>User agent:</strong> ' . e($contract['signer_user_agent']) . '</p>'
+        . '<strong>User agent:</strong> ' . e($contract['signer_user_agent']) . '<br>'
+        . '<strong>Terms agreed at:</strong> ' . e($contract['terms_agreed_at']) . '<br>'
+        . '<strong>E-sign consent at:</strong> ' . e($contract['esign_agreed_at']) . '<br>'
+        . '<strong>Signed contract hash:</strong> ' . e($contract['signed_contract_hash']) . '</p>'
         . '</body></html>';
 }
 
@@ -83,7 +86,10 @@ include __DIR__ . '/includes/header.php';
             <strong>Typed signature:</strong> <?= e($contract['typed_signature']) ?><br>
             <strong>Signed at:</strong> <?= e($contract['signed_at']) ?><br>
             <strong>IP:</strong> <?= e($contract['signer_ip']) ?><br>
-            <strong>User agent:</strong> <?= e($contract['signer_user_agent']) ?>
+            <strong>User agent:</strong> <?= e($contract['signer_user_agent']) ?><br>
+            <strong>Terms agreed at:</strong> <?= e($contract['terms_agreed_at']) ?><br>
+            <strong>E-sign consent at:</strong> <?= e($contract['esign_agreed_at']) ?><br>
+            <strong>Signed contract hash:</strong> <?= e($contract['signed_contract_hash']) ?>
         </p>
     <?php else: ?>
         <div class="empty">
