@@ -95,7 +95,7 @@ include __DIR__ . '/includes/header.php';
     <?php elseif ($signed): ?>
         <div class="empty success-message">
             <h2>Contract signed</h2>
-            <p>Your contract has been signed. Payment is the next step. Diesel Designs will review your order and send payment instructions or an invoice. Work does not begin until the contract and payment are complete.</p>
+            <p>Your contract has been signed. Payment is the next step. Diesel Designs will review your order and send payment instructions or an invoice. Questions or payment confirmations can be sent to angela@dieseldesigns.co. Work does not begin until the contract and payment are complete.</p>
             <p><a class="btn" href="contract-copy.php?token=<?= e($token) ?>">View / Download Contract Copy</a></p>
         </div>
     <?php elseif ($contract['status'] === 'signed'): ?>
