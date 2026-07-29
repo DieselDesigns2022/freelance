@@ -2,6 +2,39 @@
 
 The schema is defined in `database/portfolio_schema.sql`.
 
+## Phase 2.2 product intake and live examples
+
+`products.intake_type` is a `VARCHAR(100) NOT NULL DEFAULT 'general_service'` routing field. Supported application values are `shopify_revamp_standard`, `shopify_custom_kit`, `website_custom_build`, and `general_service`; VARCHAR storage permits later additions without an enum migration. Existing rows safely default to `general_service`. The repository does not seed or otherwise confirm the production standard Shopify Revamp product ID or slug, so the migration does not guess or automatically classify one.
+
+After applying the migration, Angela must first run this read-only verification query:
+
+```sql
+SELECT id, name, slug, service_type, intake_type
+FROM products
+WHERE service_type = 'shopify_makeover'
+ORDER BY id;
+```
+
+After confirming exactly which row is the existing standard Shopify Revamp, use an exact ID predicate (replace the placeholder with the verified numeric ID):
+
+```sql
+UPDATE products
+SET intake_type = 'shopify_revamp_standard'
+WHERE id = <verified_product_id>
+  AND service_type = 'shopify_makeover'
+  AND intake_type = 'general_service';
+```
+
+An exact verified slug may be used instead of the ID. Never update every `shopify_makeover` row because future Custom Kit products may use the same service type.
+
+`product_live_examples` stores multiple public links per product. Its signed `INT product_id` exactly matches the signed `products.id`, is indexed with `sort_order` and `id`, and references `products(id) ON DELETE CASCADE`. Each row has a required title and URL plus display order and creation time. The admin edit page manages these rows; the public product detail renders them in `sort_order, id` order only when rows exist. The legacy `products.demo_url` and `demo_password` remain supported.
+
+Phase 2.2 follows the project's existing MariaDB-compatible additive migration conventions. Confirm database compatibility with `ADD COLUMN IF NOT EXISTS`, take a full backup, obtain approval, and run the production migration once. It has not yet been run in production:
+
+```bash
+mysql -u <user> -p diesel_portfolio < database/migrations/20260729_phase_2_2_product_intake_live_examples.sql
+```
+
 ## Table: `admin_users`
 
 ### Purpose
@@ -267,13 +300,19 @@ Allowed statuses are `draft` and `published`.
 
 ### products
 
-Stores purchasable services and kits shown on the public store when `status = active`. Key columns include `name`, unique `slug`, descriptions, `service_type`, `fulfillment_type`, `price`, optional `deposit_amount`, `turnaround_text`, `includes_text`, `requirements_text`, `is_featured`, `sort_order`, nullable `contract_template_id`, optional `demo_url`, and optional `demo_password`. Active products should point at an active contract template. Indexes support public listing and contract-template lookups.
+Stores purchasable services and kits shown on the public store when `status = active`. Key columns include `name`, unique `slug`, descriptions, `service_type`, `intake_type`, `fulfillment_type`, `price`, optional `deposit_amount`, `turnaround_text`, `includes_text`, `requirements_text`, `is_featured`, `sort_order`, nullable `contract_template_id`, optional `demo_url`, and optional `demo_password`. Active products should point at an active contract template. Indexes support public listing and contract-template lookups.
 
 Allowed service types: `website_kit`, `website_build`, `shopify_makeover`, `website_revamp`, `custom_service`. Allowed fulfillment types: `service`, `digital_kit`, `hybrid`. Allowed statuses: `draft`, `active`, `archived`.
+
+`intake_type` is `VARCHAR(100) NOT NULL DEFAULT 'general_service'`, not an enum. Application values are `shopify_revamp_standard`, `shopify_custom_kit`, `website_custom_build`, and `general_service`.
 
 ### product_images
 
 Stores screenshots/product images for storefront products. Key columns include `product_id`, `image_path`, optional `alt_text`, `sort_order`, and `created_at`. Image files use the existing hardened `uploads/portfolio/` path. The `product_id` foreign key references `products(id)` with `ON DELETE CASCADE`, so deleting a product cascades related `product_images` rows.
+
+### product_live_examples
+
+Stores public example links belonging to products. Required fields are `title VARCHAR(255)` and `url VARCHAR(500)`; `sort_order` defaults to zero. The signed `INT product_id` exactly matches signed `products.id` and references it with `ON DELETE CASCADE`. The composite index `idx_product_live_examples_product_order (product_id, sort_order, id)` supports display in `sort_order`, then `id` order.
 
 ### contract_templates
 

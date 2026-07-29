@@ -16,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = trim($_POST['name'] ?? '');
     $shortDescription = trim($_POST['short_description'] ?? '');
     $serviceType = $_POST['service_type'] ?? '';
+    $intakeType = $_POST['intake_type'] ?? 'general_service';
     $fulfillmentType = 'service';
     $status = $_POST['status'] ?? 'draft';
     $price = trim($_POST['price'] ?? '');
@@ -32,6 +33,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if (!in_array($serviceType, allowed_service_types(), true)) {
         $errors[] = 'Choose a valid service type.';
+    }
+    if (!in_array($intakeType, allowed_product_intake_types(), true)) {
+        $errors[] = 'Choose a valid customer intake type.';
     }
     if (!in_array($status, allowed_product_statuses(), true)) {
         $errors[] = 'Choose a valid status.';
@@ -77,8 +81,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$errors) {
         $insertStmt = db()->prepare(
             'INSERT INTO products '
-            . '(name,slug,short_description,full_description,service_type,fulfillment_type,price,deposit_amount,turnaround_text,includes_text,requirements_text,status,is_featured,sort_order,contract_template_id,demo_url,demo_password,created_at) '
-            . 'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())'
+            . '(name,slug,short_description,full_description,service_type,intake_type,fulfillment_type,price,deposit_amount,turnaround_text,includes_text,requirements_text,status,is_featured,sort_order,contract_template_id,demo_url,demo_password,created_at) '
+            . 'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())'
         );
         $insertStmt->execute([
             $name,
@@ -86,6 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $shortDescription,
             trim($_POST['full_description'] ?? '') ?: null,
             $serviceType,
+            $intakeType,
             $fulfillmentType,
             (float) $price,
             null,

@@ -1,6 +1,7 @@
 <?php
 $serviceTypes = ['website_kit', 'website_build', 'shopify_makeover', 'website_revamp', 'custom_service'];
 $statuses = ['draft', 'active', 'archived'];
+$intakeTypes = product_intake_type_labels();
 $templates = db()->query("SELECT id, title, version, status FROM contract_templates ORDER BY title")->fetchAll();
 ?>
 <form method="post" enctype="multipart/form-data" class="admin-form admin-product-form">
@@ -9,6 +10,17 @@ $templates = db()->query("SELECT id, title, version, status FROM contract_templa
 
     <label>Product name *
         <input name="name" required maxlength="255" value="<?= e($product['name'] ?? '') ?>">
+    </label>
+
+    <label>Customer intake type
+        <select name="intake_type">
+            <?php foreach ($intakeTypes as $value => $label): ?>
+                <option value="<?= e($value) ?>" <?= ($product['intake_type'] ?? 'general_service') === $value ? 'selected' : '' ?>>
+                    <?= e($label) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <small>Selects the product-specific intake flow. Custom Kit and Custom Website Build forms are future work.</small>
     </label>
 
     <label>Product type / service type

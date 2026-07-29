@@ -93,6 +93,21 @@ function valid_url_or_blank(?string $url): bool
     return in_array($scheme, ['http', 'https'], true);
 }
 
+function allowed_product_intake_types(): array
+{
+    return ['shopify_revamp_standard', 'shopify_custom_kit', 'website_custom_build', 'general_service'];
+}
+
+function product_intake_type_labels(): array
+{
+    return [
+        'shopify_revamp_standard' => 'Standard Shopify Revamp',
+        'shopify_custom_kit' => 'Shopify Custom Design Kit',
+        'website_custom_build' => 'Custom Website Build',
+        'general_service' => 'General Service',
+    ];
+}
+
 function upload_image(array $file): array
 {
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {

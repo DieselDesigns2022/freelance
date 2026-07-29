@@ -54,6 +54,18 @@ Implemented: The shared `e()` helper uses `htmlspecialchars()` with `ENT_QUOTES`
 
 Implemented: Optional live website links must be blank or valid URLs with an `http` or `https` scheme. Non-web schemes such as `javascript:` and `ftp://` are rejected by admin create/edit validation.
 
+## Phase 2.2 Product Intake and Live Examples
+
+Implemented in code (database-backed browser security testing remains pending):
+
+- Product create/edit and live-example actions remain behind admin authentication and existing CSRF verification.
+- Submitted intake types use the strict four-value application allowlist.
+- Titles are required and limited to 255 characters; URLs are limited to 500 characters and must be valid `http` or `https` URLs.
+- Prepared statements are used. Updates and deletes are scoped by example ID and product ID to prevent cross-product manipulation.
+- Save/delete POST actions check that `product_live_examples` exists and show a migration-required error without querying the missing table.
+- Admin and public titles/URLs are escaped. Public links use `target="_blank"` with `rel="noopener noreferrer"`.
+- The public Live Examples section is suppressed when no examples exist.
+
 ## Upload Security
 
 Implemented:

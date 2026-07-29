@@ -5,6 +5,7 @@ require_once __DIR__ . '/includes/functions.php';
 $slug = trim($_GET['slug'] ?? '');
 $product = null;
 $productImages = [];
+$liveExamples = [];
 
 if ($slug !== '' && table_exists(db(), 'products')) {
     $stmt = db()->prepare("SELECT * FROM products WHERE slug = ? AND status = 'active'");
@@ -20,6 +21,11 @@ if ($product) {
         $imgStmt = db()->prepare('SELECT * FROM product_images WHERE product_id = ? ORDER BY sort_order, id');
         $imgStmt->execute([(int) $product['id']]);
         $productImages = $imgStmt->fetchAll();
+    }
+    if (table_exists(db(), 'product_live_examples')) {
+        $exampleStmt = db()->prepare('SELECT title, url FROM product_live_examples WHERE product_id = ? ORDER BY sort_order, id');
+        $exampleStmt->execute([(int) $product['id']]);
+        $liveExamples = $exampleStmt->fetchAll();
     }
 
     $structuredData = [
@@ -54,7 +60,7 @@ include __DIR__ . '/includes/header.php';
 
         <?php if ($product['demo_url']): ?>
             <p>
-                <a class="btn" href="<?= e($product['demo_url']) ?>" target="_blank" rel="noopener">
+                <a class="btn" href="<?= e($product['demo_url']) ?>" target="_blank" rel="noopener noreferrer">
                     View Live Demo
                 </a>
             </p>
@@ -66,6 +72,17 @@ include __DIR__ . '/includes/header.php';
 
         <p><a class="btn btn-accent" href="purchase.php?product=<?= e($product['slug']) ?>">Order Now</a></p>
     </section>
+
+    <?php if ($liveExamples): ?>
+        <section class="section product-section">
+            <h2>Live Examples</h2>
+            <div class="card-actions">
+                <?php foreach ($liveExamples as $example): ?>
+                    <a class="btn" href="<?= e($example['url']) ?>" target="_blank" rel="noopener noreferrer"><?= e($example['title']) ?></a>
+                <?php endforeach; ?>
+            </div>
+        </section>
+    <?php endif; ?>
 
     <?php if ($productImages): ?>
         <section class="section product-section">

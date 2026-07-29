@@ -144,3 +144,9 @@ Phase 2 adds a store foundation for selling Diesel Designs website kits, website
 Each purchasable product must be assigned an active contract template before public ordering is allowed. The order flow snapshots product details and renders a contract instance so later edits to templates do not change previously generated or signed contracts. Customers sign through secure token links and can view or download a printable HTML contract copy after signing.
 
 Admins can manage products, contract templates, and orders from the admin area. Payment handling is manual only in this phase through payment status fields; no live payment gateway, card capture, Stripe, PayPal, Square, WooCommerce, or Shopify checkout integration is included.
+
+### Phase 2.2 Product Intake Types and Live Examples
+
+Products store an allowlisted intake type: `shopify_revamp_standard`, `shopify_custom_kit`, `website_custom_build`, or `general_service`. Products default to `general_service`; the field is a `VARCHAR`, not a database enum. Product details can show multiple live examples ordered by display order and ID while retaining screenshots, the single demo URL, and optional demo password.
+
+Phase 2.2 does not change visible purchase forms: standard Shopify Revamp still uses the existing `shopify_makeover` service-type flow. Shopify Custom Design Kit intake is future Phase 2.3 work, and Custom Website Build intake is future Phase 2.4 work. Existing deployments require the Phase 2.2 migration. Because the repository has no confirmed production identifier for the standard Shopify Revamp, verify the production product and classify it using one exact ID or verified slug after migration; see `docs/DEPLOYMENT.md`.
