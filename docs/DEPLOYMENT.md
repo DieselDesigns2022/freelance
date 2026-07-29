@@ -174,7 +174,7 @@ There is no payment gateway deployment step in Phase 2. Payment status is manage
 
 ## Phase 2.2 Deployment Notes
 
-No Phase 2.2 production migration or deployment has occurred. For an existing deployment, apply migrations in order: (1) Phase 2, (2) Phase 2.1, and (3) Phase 2.2. Before Phase 2.2, obtain approval and take a full site, database, and uploads backup.
+Phase 2.2 was deployed to the Phase 2.2 VPS branch after file and database backups. For an existing deployment, apply migrations in order: (1) Phase 2, (2) Phase 2.1, and (3) Phase 2.2. Before Phase 2.2, obtain approval and take a full site, database, and uploads backup.
 
 ```bash
 mysql -u <user> -p diesel_portfolio < database/migrations/20260729_phase_2_2_product_intake_live_examples.sql
@@ -221,3 +221,5 @@ SHOW CREATE TABLE product_live_examples;
 ```
 
 Verify the correct standard product classification, admin create/edit intake selection, live-example add/edit/display-order/delete behavior, conditional public display, and unchanged standard Shopify purchase form. Shopify Custom Design Kit intake (future Phase 2.3) and Custom Website Build intake (future Phase 2.4) are not part of this deployment.
+
+Live deployment record: the migration was applied successfully on MariaDB 10.11. `products.intake_type` and `product_live_examples` were verified, and Product ID 1 was classified as `shopify_revamp_standard`. Public page smoke checks returned HTTP 200, and unauthenticated `admin/products.php` correctly redirected to admin login.

@@ -124,6 +124,8 @@ No automated deployment is implemented.
 
 Phase 2.2 stores intake metadata for future routing but does not alter `purchase.php`: standard Shopify Revamp intake still follows `service_type = shopify_makeover`. Shopify Custom Design Kit intake is future Phase 2.3 work, and Custom Website Build intake is future Phase 2.4 work.
 
+The admin product form is organized into focused cards for setup, customer-facing information, demo/live-example settings, and images. Products using `shopify_revamp_standard` display the single demo URL/password controls. Products using `shopify_custom_kit` or `website_custom_build` display the multiple Live Examples manager instead.
+
 ## Recovery Workflow
 
 If a deployment fails:

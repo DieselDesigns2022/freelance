@@ -58,7 +58,7 @@ include __DIR__ . '/includes/header.php';
             <?php endif; ?>
         </p>
 
-        <?php if ($product['demo_url']): ?>
+        <?php if (($product['intake_type'] ?? 'general_service') === 'shopify_revamp_standard' && $product['demo_url']): ?>
             <p>
                 <a class="btn" href="<?= e($product['demo_url']) ?>" target="_blank" rel="noopener noreferrer">
                     View Live Demo
@@ -66,14 +66,17 @@ include __DIR__ . '/includes/header.php';
             </p>
         <?php endif; ?>
 
-        <?php if ($product['demo_password']): ?>
+        <?php if (($product['intake_type'] ?? 'general_service') === 'shopify_revamp_standard' && $product['demo_password']): ?>
             <p><strong class="demo-label">Demo password:</strong> <?= e($product['demo_password']) ?></p>
         <?php endif; ?>
 
         <p><a class="btn btn-accent" href="purchase.php?product=<?= e($product['slug']) ?>">Order Now</a></p>
     </section>
 
-    <?php if ($liveExamples): ?>
+    <?php if (
+        in_array(($product['intake_type'] ?? 'general_service'), ['shopify_custom_kit', 'website_custom_build'], true)
+        && $liveExamples
+    ): ?>
         <section class="section product-section">
             <h2>Live Examples</h2>
             <div class="card-actions">

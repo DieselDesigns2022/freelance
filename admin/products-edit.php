@@ -268,6 +268,7 @@ if ($liveExamplesTableExists) {
     $liveExamples = $exampleStmt->fetchAll();
 }
 ?>
+<?php if (in_array(($product['intake_type'] ?? 'general_service'), ['shopify_custom_kit', 'website_custom_build'], true)): ?>
 <section class="admin-card product-live-examples-panel">
     <h2>Live Examples</h2>
     <p class="helper">Add public examples after saving the product. Links appear in display order on the product detail page.</p>
@@ -304,6 +305,7 @@ if ($liveExamplesTableExists) {
         </form>
     <?php endif; ?>
 </section>
+<?php endif; ?>
 
 <?php
 $productImages = [];

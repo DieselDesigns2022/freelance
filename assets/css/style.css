@@ -890,3 +890,172 @@ button:disabled,
         grid-template-columns: 1fr !important;
     }
 }
+
+
+/* Phase 2.2 organized admin product form */
+.admin-product-form {
+    display: block;
+}
+
+.product-form-section {
+    margin: 0 0 1.5rem;
+    padding: 1.5rem;
+}
+
+.product-form-section-heading {
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, .09);
+}
+
+.product-form-section-heading h2 {
+    margin: 0 0 .35rem;
+}
+
+.product-form-section-heading p {
+    margin: 0;
+    color: var(--muted);
+}
+
+.product-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
+    align-items: start;
+}
+
+.product-form-grid > label {
+    display: flex;
+    flex-direction: column;
+    gap: .55rem;
+    min-width: 0;
+    margin: 0;
+}
+
+.product-form-grid .product-form-full {
+    grid-column: 1 / -1;
+}
+
+.product-information-grid > label:first-child {
+    max-width: 420px;
+}
+
+.product-form-grid textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.product-form-grid .product-full-description {
+    min-height: 210px;
+}
+
+.product-form-grid input,
+.product-form-grid select {
+    min-height: 52px;
+}
+
+.product-form-grid small {
+    color: var(--muted);
+    font-weight: 400;
+}
+
+.product-form-grid .feature-check {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    align-self: end;
+    gap: .65rem;
+    min-height: 52px;
+    width: fit-content;
+}
+
+.product-form-grid .feature-check input {
+    width: 18px;
+    min-height: 18px;
+    height: 18px;
+    margin: 0;
+}
+
+.product-form-actions {
+    display: flex;
+    justify-content: flex-start;
+    margin: .25rem 0 1.5rem;
+}
+
+.product-form-actions .btn {
+    width: auto;
+}
+
+.product-live-examples-panel,
+.product-images-panel {
+    margin-top: 1.5rem;
+}
+
+@media (max-width: 800px) {
+    .product-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .product-form-grid .product-form-full {
+        grid-column: auto;
+    }
+
+    .product-information-grid > label:first-child {
+        max-width: none;
+    }
+
+    .product-form-section {
+        padding: 1.1rem;
+    }
+}
+
+/* Phase 2.2 product admin final alignment fixes */
+.admin-form.admin-product-form {
+    display: block !important;
+    width: 100%;
+}
+
+.admin-product-form > .product-form-section {
+    display: block;
+    width: 100%;
+    clear: both;
+}
+
+.product-form-grid .feature-check {
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: center;
+    align-self: center;
+    justify-content: flex-start;
+    gap: .65rem;
+    width: fit-content;
+    min-height: 52px;
+}
+
+.product-form-grid .feature-check input[type="checkbox"] {
+    appearance: auto;
+    flex: 0 0 18px;
+    width: 18px !important;
+    min-width: 18px;
+    max-width: 18px;
+    height: 18px !important;
+    min-height: 18px !important;
+    max-height: 18px;
+    padding: 0 !important;
+    margin: 0;
+}
+
+.admin-product-form > .product-form-actions {
+    display: flex !important;
+    width: 100%;
+    clear: both;
+    justify-content: flex-start;
+    margin: 0 0 1.5rem;
+}
+
+.admin-product-form > .product-form-actions .btn {
+    display: inline-flex;
+    width: auto !important;
+    min-width: 150px;
+    justify-content: center;
+}
