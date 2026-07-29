@@ -144,3 +144,9 @@ Limitations: no live payment gateway, no PDF generation library, no public order
 
 ## Phase 2.1 - Shopify Revamp Product Flow
 Phase 2.1 builds the first focused product/customer flow around Shopify Website Revamp services: admin product setup, screenshots, demo URL/password, Shopify-specific intake, contract placeholders, token signing audit fields, manual payment follow-up, and admin order review. It does not add Shopify admin password collection, account creation, payment gateways, PDFs, or initials support.
+
+## Phase 2.2 — Product Intake Types + Live Example Links
+
+Phase 2.2 adds allowlisted product intake metadata and reusable, ordered live-example links. Admins choose one of four intake classifications during product creation/editing and manage examples after the product exists. Public product details conditionally show examples while retaining screenshots and the existing single demo URL/password. The migration uses signed `INT` for the example foreign key to match `products.id`. Because the repository contains no definitive production identifier for the existing standard Shopify Revamp, the migration leaves existing products at `general_service` and documents a verification query plus an exact-ID update pattern; it never broadly classifies all Shopify Make-Over products. Existing purchase, contract, and manual-payment flows are unchanged.
+
+Status: the production migration has not been run, no deployment has occurred, and no Phase 2.2 GitHub pull request has been created. Database-backed browser/manual runtime testing remains pending until migration approval and application in the correct workflow step. Shopify Custom Design Kit intake is planned future Phase 2.3 work; Custom Website Build intake is planned future Phase 2.4 work.

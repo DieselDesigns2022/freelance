@@ -157,6 +157,7 @@ CREATE TABLE IF NOT EXISTS products (
   short_description TEXT NOT NULL,
   full_description MEDIUMTEXT NULL,
   service_type VARCHAR(50) NOT NULL,
+  intake_type VARCHAR(100) NOT NULL DEFAULT 'general_service',
   fulfillment_type VARCHAR(50) NOT NULL DEFAULT 'service',
   price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   deposit_amount DECIMAL(10,2) NULL,
@@ -189,6 +190,17 @@ CREATE TABLE IF NOT EXISTS product_images (
   INDEX idx_product_images_product (product_id),
   INDEX idx_product_images_sort_order (sort_order),
   CONSTRAINT fk_product_images_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS product_live_examples (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  product_id INT NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  url VARCHAR(500) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL,
+  INDEX idx_product_live_examples_product_order (product_id, sort_order, id),
+  CONSTRAINT fk_product_live_examples_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS orders (

@@ -86,3 +86,12 @@ The app uses direct PHP files instead of a front controller.
 - `product-service.php`: public product detail page with screenshots, demo link, optional demo password, and Order Now CTA.
 - `purchase.php`: Shopify Revamp intake form for `shopify_makeover` products plus the existing generic fallback for other service types.
 - `sign-contract.php`, `contract-copy.php`, and `admin/contract-copy.php`: token contract signing and signed-copy audit display. Payment remains manual; no payment gateway route exists.
+
+## Phase 2.2 product intake metadata and live examples
+
+- `admin/products-create.php`: saves an allowlisted product intake type; live examples become available after the base product has an ID.
+- `admin/products-edit.php?id=...`: updates the allowlisted intake type and adds, edits, changes display order, or deletes product-owned live example links with admin authentication and CSRF protection. No separate live-example handler route was added.
+- `product-service.php?slug=...`: preserves screenshots, legacy demo URL/password, and purchase CTA while conditionally showing ordered Live Examples.
+- `purchase.php?product=...`: unchanged in Phase 2.2. `intake_type` is stored for future routing but does not alter visible forms; standard Shopify Revamp continues to use `service_type = shopify_makeover`.
+
+Shopify Custom Design Kit intake is future Phase 2.3 work. Custom Website Build intake is future Phase 2.4 work.

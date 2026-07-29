@@ -17,6 +17,8 @@ if (!$product) {
     exit('Not found');
 }
 
+$liveExamplesTableExists = table_exists(db(), 'product_live_examples');
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
     $action = $_POST['action'] ?? 'save';
@@ -100,12 +102,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         flash('success', 'Product images updated.');
         redirect('products-edit.php?id=' . $id);
+    } elseif ($action === 'save_live_example') {
+        $exampleId = (int) ($_POST['example_id'] ?? 0);
+        $title = trim($_POST['example_title'] ?? '');
+        $url = trim($_POST['example_url'] ?? '');
+        $sortOrder = (int) ($_POST['example_sort_order'] ?? 0);
+
+        if (!$liveExamplesTableExists) {
+            $errors[] = 'Run the Phase 2.2 database migration before managing live examples.';
+        } elseif ($title === '') {
+            $errors[] = 'Live example title is required.';
+        } elseif (strlen($title) > 255) {
+            $errors[] = 'Live example title must be 255 characters or fewer.';
+        }
+        if ($url === '' || !valid_url_or_blank($url)) {
+            $errors[] = 'Live example URL must be a valid http:// or https:// URL.';
+        } elseif (strlen($url) > 500) {
+            $errors[] = 'Live example URL must be 500 characters or fewer.';
+        }
+
+        if (!$errors && $exampleId > 0) {
+            $exampleStmt = db()->prepare('SELECT id FROM product_live_examples WHERE id = ? AND product_id = ?');
+            $exampleStmt->execute([$exampleId, $id]);
+            if (!$exampleStmt->fetch()) {
+                $errors[] = 'Live example not found for this product.';
+            }
+        }
+
+        if (!$errors) {
+            if ($exampleId > 0) {
+                db()->prepare('UPDATE product_live_examples SET title = ?, url = ?, sort_order = ? WHERE id = ? AND product_id = ?')
+                    ->execute([$title, $url, $sortOrder, $exampleId, $id]);
+                $message = 'Live example updated.';
+            } else {
+                db()->prepare('INSERT INTO product_live_examples (product_id, title, url, sort_order, created_at) VALUES (?, ?, ?, ?, NOW())')
+                    ->execute([$id, $title, $url, $sortOrder]);
+                $message = 'Live example added.';
+            }
+            flash('success', $message);
+            redirect('products-edit.php?id=' . $id);
+        }
+    } elseif ($action === 'delete_live_example') {
+        if (!$liveExamplesTableExists) {
+            $errors[] = 'Run the Phase 2.2 database migration before managing live examples.';
+        } else {
+            $exampleId = (int) ($_POST['example_id'] ?? 0);
+            $deleteStmt = db()->prepare('DELETE FROM product_live_examples WHERE id = ? AND product_id = ?');
+            $deleteStmt->execute([$exampleId, $id]);
+            if ($deleteStmt->rowCount() !== 1) {
+                $errors[] = 'Live example not found for this product.';
+            } else {
+                flash('success', 'Live example deleted.');
+                redirect('products-edit.php?id=' . $id);
+            }
+        }
     } elseif ($action === 'save') {
         $product = array_merge($product, $_POST);
         $name = trim($_POST['name'] ?? '');
         $slug = trim($_POST['slug'] ?? '') ?: slugify($name);
         $shortDescription = trim($_POST['short_description'] ?? '');
         $serviceType = $_POST['service_type'] ?? '';
+        $intakeType = $_POST['intake_type'] ?? 'general_service';
         $fulfillmentType = 'service';
         $status = $_POST['status'] ?? 'draft';
         $price = trim($_POST['price'] ?? '');
@@ -122,6 +179,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         if (!in_array($serviceType, allowed_service_types(), true)) {
             $errors[] = 'Choose a valid service type.';
+        }
+        if (!in_array($intakeType, allowed_product_intake_types(), true)) {
+            $errors[] = 'Choose a valid customer intake type.';
         }
         if (!in_array($status, allowed_product_statuses(), true)) {
             $errors[] = 'Choose a valid status.';
@@ -155,7 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!$errors) {
             db()->prepare(
-                'UPDATE products SET name=?, slug=?, short_description=?, full_description=?, service_type=?, '
+                'UPDATE products SET name=?, slug=?, short_description=?, full_description=?, service_type=?, intake_type=?, '
                 . 'fulfillment_type=?, price=?, deposit_amount=?, turnaround_text=?, includes_text=?, '
                 . 'requirements_text=?, status=?, is_featured=?, sort_order=?, contract_template_id=?, '
                 . 'demo_url=?, demo_password=?, updated_at=NOW() WHERE id=?'
@@ -165,6 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $shortDescription,
                 trim($_POST['full_description'] ?? '') ?: null,
                 $serviceType,
+                $intakeType,
                 $fulfillmentType,
                 (float) $price,
                 ($product['deposit_amount'] ?? null) === '' ? null : ($product['deposit_amount'] ?? null),
@@ -198,6 +259,51 @@ include __DIR__ . '/includes/admin-header.php';
 <?php endforeach; ?>
 
 <?php include __DIR__ . '/product-form.php'; ?>
+
+<?php
+$liveExamples = [];
+if ($liveExamplesTableExists) {
+    $exampleStmt = db()->prepare('SELECT * FROM product_live_examples WHERE product_id = ? ORDER BY sort_order, id');
+    $exampleStmt->execute([$id]);
+    $liveExamples = $exampleStmt->fetchAll();
+}
+?>
+<section class="admin-card product-live-examples-panel">
+    <h2>Live Examples</h2>
+    <p class="helper">Add public examples after saving the product. Links appear in display order on the product detail page.</p>
+
+    <?php if (!$liveExamplesTableExists): ?>
+        <p>Run the Phase 2.2 database migration before managing live examples.</p>
+    <?php else: ?>
+        <?php foreach ($liveExamples as $example): ?>
+            <form method="post" class="admin-form">
+                <?= csrf_field() ?>
+                <input type="hidden" name="action" value="save_live_example">
+                <input type="hidden" name="example_id" value="<?= (int) $example['id'] ?>">
+                <label>Title *<input name="example_title" required maxlength="255" value="<?= e($example['title']) ?>"></label>
+                <label>URL *<input name="example_url" type="url" required maxlength="500" value="<?= e($example['url']) ?>"></label>
+                <label>Display order<input name="example_sort_order" type="number" value="<?= (int) $example['sort_order'] ?>"></label>
+                <button class="btn">Save Example</button>
+            </form>
+            <form method="post" onsubmit="return confirm('Delete this live example?')">
+                <?= csrf_field() ?>
+                <input type="hidden" name="action" value="delete_live_example">
+                <input type="hidden" name="example_id" value="<?= (int) $example['id'] ?>">
+                <button class="btn danger">Delete Example</button>
+            </form>
+        <?php endforeach; ?>
+
+        <form method="post" class="admin-form">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="save_live_example">
+            <h3>Add Live Example</h3>
+            <label>Title *<input name="example_title" required maxlength="255"></label>
+            <label>URL *<input name="example_url" type="url" required maxlength="500" placeholder="https://"></label>
+            <label>Display order<input name="example_sort_order" type="number" value="0"></label>
+            <button class="btn">Add Example</button>
+        </form>
+    <?php endif; ?>
+</section>
 
 <?php
 $productImages = [];
