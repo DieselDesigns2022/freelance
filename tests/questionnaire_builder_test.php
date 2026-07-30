@@ -128,4 +128,65 @@ assert($addonErrors === []);
 assert($addonAnswer['billable_quantity'] === 0);
 assert($addonAnswer['total_cents'] === 0);
 
+
+assert(questionnaire_field_type_label('multiple_inputs') === 'Multiple Input Options');
+assert(in_array('multiple_inputs', QUESTIONNAIRE_FIELD_TYPES, true));
+
+$multipleInputTemplate = [
+    'fields' => [[
+        'field_key' => 'website_section_text',
+        'field_type' => 'multiple_inputs',
+        'label' => 'Website section wording',
+        'help_text' => '',
+        'is_required' => 0,
+        'options' => [],
+        'validation' => ['input_count' => 4],
+        'sort_order' => 10,
+    ]],
+];
+
+[$multiErrors, $multiAnswers] = validate_questionnaire_submission(
+    $multipleInputTemplate,
+    ['q' => ['website_section_text' => [
+        0 => 'First sentence',
+        1 => '',
+        2 => 'Third sentence',
+        3 => '',
+    ]]],
+    []
+);
+
+assert($multiErrors === []);
+assert($multiAnswers['website_section_text'] === [
+    'Input 1: First sentence',
+    'Input 3: Third sentence',
+]);
+
+[$blankMultiErrors, $blankMultiAnswers] = validate_questionnaire_submission(
+    $multipleInputTemplate,
+    ['q' => ['website_section_text' => ['', '', '', '']]],
+    []
+);
+
+assert($blankMultiErrors === []);
+assert($blankMultiAnswers['website_section_text'] === []);
+
+$multipleInputTemplate['fields'][0]['is_required'] = 1;
+
+[$requiredMultiErrors] = validate_questionnaire_submission(
+    $multipleInputTemplate,
+    ['q' => ['website_section_text' => ['', '', '', '']]],
+    []
+);
+
+assert($requiredMultiErrors !== []);
+
+[$unknownMultiErrors] = validate_questionnaire_submission(
+    $multipleInputTemplate,
+    ['q' => ['website_section_text' => [99 => 'Forged field']]],
+    []
+);
+
+assert($unknownMultiErrors !== []);
+
 echo "Questionnaire builder focused tests passed\n";

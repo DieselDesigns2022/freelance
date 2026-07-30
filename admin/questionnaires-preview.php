@@ -105,6 +105,31 @@ include __DIR__ . '/includes/admin-header.php';
           </label>
         <?php endforeach; ?>
 
+      <?php elseif ($type === 'multiple_inputs'): ?>
+        <?php
+        $inputCount = max(
+            2,
+            min(10, (int) ($validation['input_count'] ?? 4))
+        );
+        ?>
+        <div class="questionnaire-multiple-inputs">
+          <?php for ($inputIndex = 0; $inputIndex < $inputCount; $inputIndex++): ?>
+            <label
+              class="visually-hidden"
+              for="<?= e($key . '-preview-' . $inputIndex) ?>"
+            >
+              Input <?= $inputIndex + 1 ?>
+            </label>
+            <input
+              id="<?= e($key . '-preview-' . $inputIndex) ?>"
+              type="text"
+              name="preview[<?= e($key) ?>][<?= $inputIndex ?>]"
+              placeholder="Input <?= $inputIndex + 1 ?>"
+            >
+          <?php endfor; ?>
+        </div>
+        <small>Complete as many boxes as needed. Individual boxes may be left blank.</small>
+
       <?php elseif (in_array($type, QUESTIONNAIRE_FILE_TYPES, true)): ?>
         <?php
         $extensions = $validation['allowed_extensions'] ?? ['png', 'jpg', 'jpeg', 'webp', 'pdf'];
@@ -120,7 +145,7 @@ include __DIR__ . '/includes/admin-header.php';
           <?= $type === 'multiple_files' ? 'multiple' : '' ?>
           data-preview-file
         >
-        <small data-preview-file-status>No file selected.</small>
+        <small data-preview-file-status hidden></small>
 
       <?php else: ?>
         <?= e(questionnaire_field_type_label($type)) ?>
@@ -175,9 +200,10 @@ document.querySelectorAll('[data-preview-file]').forEach((input) => {
     input.addEventListener('change', () => {
         const files = Array.from(input.files || []);
 
+        status.hidden = files.length === 0;
         status.textContent = files.length
             ? files.map((file) => file.name).join(', ')
-            : 'No file selected.';
+            : '';
     });
 });
 </script>

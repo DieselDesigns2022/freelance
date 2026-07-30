@@ -4,7 +4,7 @@ declare(strict_types=1);
 const QUESTIONNAIRE_STATUSES = ['draft', 'active', 'archived'];
 const QUESTIONNAIRE_FIELD_TYPES = [
     'short_text', 'long_text', 'email', 'phone', 'url', 'number', 'date', 'yes_no',
-    'dropdown', 'radio', 'checkboxes', 'file', 'multiple_files', 'addon', 'information', 'section_heading',
+    'dropdown', 'radio', 'checkboxes', 'multiple_inputs', 'file', 'multiple_files', 'addon', 'information', 'section_heading',
 ];
 const QUESTIONNAIRE_STRUCTURAL_TYPES = ['information', 'section_heading'];
 const QUESTIONNAIRE_OPTION_TYPES = ['dropdown', 'radio', 'checkboxes'];
@@ -17,6 +17,7 @@ function questionnaire_field_type_label(string $type): string
         'file' => 'File Upload',
         'multiple_files' => 'Multiple File Uploads',
         'addon' => 'Add-On / Upgrade',
+        'multiple_inputs' => 'Multiple Input Options',
         default => ucwords(str_replace('_', ' ', $type)),
     };
 }
@@ -315,6 +316,17 @@ function questionnaire_definition_errors(array $fields): array
             $errors[] = 'Structural fields must be optional.';
         }
 
+        if ($type === 'multiple_inputs') {
+            $inputCount = filter_var(
+                $field['validation']['input_count'] ?? null,
+                FILTER_VALIDATE_INT
+            );
+
+            if ($inputCount === false || $inputCount < 2 || $inputCount > 10) {
+                $errors[] = 'Every active Multiple Input Options field must contain between 2 and 10 inputs.';
+            }
+        }
+
         if (in_array($type, QUESTIONNAIRE_OPTION_TYPES, true)) {
             $submittedOptions = [];
             foreach ($field['options'] ?? [] as $option) {
@@ -474,6 +486,67 @@ function validate_questionnaire_submission(array $template, array $posted, array
         }
 
         $raw = $postedAnswers[$key] ?? null;
+
+        if ($type === 'multiple_inputs') {
+            if ($raw !== null && !is_array($raw)) {
+                $errors[] = $field['label'] . ' has an invalid submission.';
+                $answers[$key] = [];
+                continue;
+            }
+
+            $inputCount = filter_var(
+                $field['validation']['input_count'] ?? null,
+                FILTER_VALIDATE_INT
+            );
+
+            if ($inputCount === false || $inputCount < 2 || $inputCount > 10) {
+                $errors[] = $field['label'] . ' has an invalid input configuration.';
+                $answers[$key] = [];
+                continue;
+            }
+
+            $submittedInputs = is_array($raw) ? $raw : [];
+            $groupedAnswers = [];
+
+            foreach ($submittedInputs as $index => $submittedValue) {
+                $numericIndex = filter_var($index, FILTER_VALIDATE_INT);
+
+                if (
+                    $numericIndex === false
+                    || $numericIndex < 0
+                    || $numericIndex >= $inputCount
+                ) {
+                    $errors[] = $field['label'] . ' contains an unknown input.';
+                    continue;
+                }
+
+                if (is_array($submittedValue)) {
+                    $errors[] = $field['label'] . ' contains an invalid input.';
+                    continue;
+                }
+
+                $value = trim((string) $submittedValue);
+
+                if ($value === '') {
+                    continue;
+                }
+
+                if (mb_strlen($value) > 5000) {
+                    $errors[] = $field['label'] . ' contains an answer that is too long.';
+                    continue;
+                }
+
+                $groupedAnswers[] = 'Input ' . ($numericIndex + 1) . ': ' . $value;
+            }
+
+            if (!empty($field['is_required']) && !$groupedAnswers) {
+                $errors[] = $field['label'] . ' requires at least one completed input.';
+            }
+
+            $answers[$key] = $groupedAnswers;
+            continue;
+        }
+
         if ($type === 'addon') {
             [$addonErrors, $addon] = questionnaire_calculate_addon($field, $raw);
             if (!empty($field['is_required']) && ($addon['selected_quantity'] ?? 0) === 0) $addonErrors[] = 'is required.';

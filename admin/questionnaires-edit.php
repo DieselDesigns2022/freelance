@@ -276,6 +276,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (in_array($type, QUESTIONNAIRE_OPTION_TYPES, true) && !$options) {
                 $errors[] = 'Option fields require at least one non-empty option.';
             }
+            if ($type === 'multiple_inputs') {
+                $inputCountRaw = trim((string) ($fieldValues['input_count'] ?? ''));
+
+                if (preg_match('/^\d+$/', $inputCountRaw) !== 1) {
+                    $errors[] = 'Number of input fields must be a whole number.';
+                    $validation['input_count'] = 0;
+                } else {
+                    $validation['input_count'] = (int) $inputCountRaw;
+                }
+
+                if (
+                    $validation['input_count'] < 2
+                    || $validation['input_count'] > 10
+                ) {
+                    $errors[] = 'Multiple Input Options allows between 2 and 10 input fields.';
+                }
+            }
 
             if ($type === 'addon') {
                 $method = (string) ($fieldValues['pricing_method'] ?? '');
@@ -489,9 +506,26 @@ function render_field_editor(array $values, bool $editing, int $fieldId, int $so
             <label data-control="placeholder">Placeholder
                 <input name="placeholder" value="<?= e((string) ($values['placeholder'] ?? '')) ?>">
             </label>
-            <label data-control="options">Options (one per line)
+            <label data-control="options">
+                <span>Options (one per line)</span>
                 <textarea name="options"><?= e(implode("\n", (array) $options)) ?></textarea>
             </label>
+
+            <div data-control="multiple-input-settings">
+                <label>Number of input fields
+                    <input
+                        type="number"
+                        name="input_count"
+                        min="2"
+                        max="10"
+                        step="1"
+                        value="<?= e((string) ($validation['input_count'] ?? '4')) ?>"
+                    >
+                </label>
+                <small>
+                    Customers may complete all of the boxes or leave individual boxes blank.
+                </small>
+            </div>
             <div class="product-form-grid" data-control="text-length">
                 <label>Minimum length<input type="number" min="0" name="min_length" value="<?= e((string) ($validation['min_length'] ?? '')) ?>"></label>
                 <label>Maximum length<input type="number" min="0" name="max_length" value="<?= e((string) ($validation['max_length'] ?? '')) ?>"></label>
@@ -620,7 +654,7 @@ include __DIR__ . '/includes/admin-header.php';
  document.querySelectorAll('[data-add-at]').forEach(button=>button.addEventListener('click',()=>{ const index=Number(button.dataset.addAt); addDialog.querySelector('[name=insertion_index]').value=index; addDialog.showModal(); }));
  document.querySelector('[data-open-import]').addEventListener('click',()=>importDialog.showModal());
  document.querySelectorAll('[data-close-dialog]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog')?.close()));
- const configure=(form)=>{ const select=form.querySelector('[data-field-type]'), controls=form.querySelector('[data-editor-controls]'); const update=()=>{ const type=select.value; controls.hidden=!type; const visible={ 'admin-label':['section_heading','information','addon'].includes(type), help:!['section_heading','information'].includes(type), placeholder:['short_text','long_text'].includes(type), options:['dropdown','radio','checkboxes'].includes(type), 'text-length':['short_text','long_text'].includes(type), 'number-range':type==='number', 'file-settings':['file','multiple_files'].includes(type), 'file-count':type==='multiple_files', 'addon-settings':type==='addon', required:!['section_heading','information'].includes(type) }; form.querySelectorAll('[data-control]').forEach(el=>el.hidden=!visible[el.dataset.control]); const caption=form.querySelector('[data-label-caption]'); caption.textContent=type==='section_heading'?'Wording':type==='information'?'Information text':type==='addon'?'Customer-facing upgrade name':'Question'; }; select.addEventListener('change',update); update(); };
+ const configure=(form)=>{ const select=form.querySelector('[data-field-type]'), controls=form.querySelector('[data-editor-controls]'); const update=()=>{ const type=select.value; controls.hidden=!type; const visible={ 'admin-label':['section_heading','information','addon','multiple_inputs'].includes(type), help:!['section_heading','information'].includes(type), placeholder:['short_text','long_text'].includes(type), options:['dropdown','radio','checkboxes'].includes(type), 'multiple-input-settings':type==='multiple_inputs', 'text-length':['short_text','long_text'].includes(type), 'number-range':type==='number', 'file-settings':['file','multiple_files'].includes(type), 'file-count':type==='multiple_files', 'addon-settings':type==='addon', required:!['section_heading','information'].includes(type) }; form.querySelectorAll('[data-control]').forEach(el=>el.hidden=!visible[el.dataset.control]); const caption=form.querySelector('[data-label-caption]'); caption.textContent=type==='section_heading'?'Wording':type==='information'?'Information text':type==='addon'?'Customer-facing upgrade name':'Question'; }; select.addEventListener('change',update); update(); };
  document.querySelectorAll('[data-questionnaire-field-form]').forEach(form=>{ configure(form); const pricing=form.querySelector('[name=pricing_method]'); const updatePricing=()=>{ const method=pricing.value; const included=form.querySelector('[data-addon-included]'); const maximum=form.querySelector('[data-addon-maximum]'); const priceLabel=form.querySelector('[data-addon-price-label]'); const maximumLabel=form.querySelector('[data-addon-maximum-label]'); included.hidden=method!=='per_additional_item'; maximum.hidden=method==='flat_fee'; priceLabel.textContent=method==='flat_fee'?'Flat fee price':method==='per_additional_item'?'Price per item over included amount':'Price per item'; maximumLabel.textContent=method==='per_additional_item'?'Maximum total quantity customer can enter':'Maximum quantity customer can enter'; }; pricing.addEventListener('change',updatePricing); updatePricing(); });
  const list=document.querySelector('[data-field-list]'), order=document.querySelector('[data-field-order]'), save=document.querySelector('[data-save-order]'); let dragged;
  list?.addEventListener('dragstart',event=>{ dragged=event.target.closest('[data-field-id]'); dragged?.classList.add('is-dragging'); });
