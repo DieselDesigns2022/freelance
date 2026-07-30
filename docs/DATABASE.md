@@ -330,3 +330,6 @@ Stores one generated contract for an order. Key columns include `order_id`, null
 
 ## Phase 2.1 Shopify Revamp migration
 Existing deployments must run `database/migrations/20260710_phase_2_1_shopify_revamp_flow.sql`. The migration is additive for MariaDB 10.11: `products.demo_url`, `products.demo_password`, `product_images`, Shopify intake/customer audit columns on `orders`, and consent/hash fields on `contract_instances`.
+
+### Phase 2.3 questionnaires
+See [`docs/PHASE_2_3_QUESTIONNAIRES.md`](PHASE_2_3_QUESTIONNAIRES.md) for the reusable builder, schema, field inventory, snapshot/upload security, assignment rules, deployment, rollback, and pending live tests.

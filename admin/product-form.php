@@ -3,6 +3,15 @@ $serviceTypes = ['website_kit', 'website_build', 'shopify_makeover', 'website_re
 $statuses = ['draft', 'active', 'archived'];
 $intakeTypes = product_intake_type_labels();
 $templates = db()->query("SELECT id, title, version, status FROM contract_templates ORDER BY title")->fetchAll();
+$questionnaireTemplates = [];
+if (table_exists(db(), 'questionnaire_templates')) {
+    $currentQuestionnaireId = !empty($product['id'])
+        ? (int) ($product['questionnaire_template_id'] ?? 0)
+        : 0;
+    $questionnaireStmt = db()->prepare("SELECT id,title,status FROM questionnaire_templates WHERE status='active' OR id=? ORDER BY title");
+    $questionnaireStmt->execute([$currentQuestionnaireId]);
+    $questionnaireTemplates = $questionnaireStmt->fetchAll();
+}
 ?>
 <form method="post" enctype="multipart/form-data" class="admin-form admin-product-form">
     <?= csrf_field() ?>
@@ -38,6 +47,16 @@ $templates = db()->query("SELECT id, title, version, status FROM contract_templa
                     <?php endforeach; ?>
                 </select>
                 <small>Controls which customer order form this product will use.</small>
+            </label>
+
+            <label>Questionnaire template
+                <select name="questionnaire_template_id">
+                    <option value="">None</option>
+                    <?php foreach ($questionnaireTemplates as $template): ?>
+                        <option value="<?= (int) $template['id'] ?>" <?= (string) ($product['questionnaire_template_id'] ?? '') === (string) $template['id'] ? 'selected' : '' ?>><?= e($template['title'] . ' (' . $template['status'] . ')') ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <small>Standard Revamps and Custom Shopify Themes require an active questionnaire when active.</small>
             </label>
 
             <label>Contract template

@@ -97,3 +97,6 @@ The app uses direct PHP files instead of a front controller.
 - `purchase.php?product=...`: unchanged in Phase 2.2. `intake_type` is stored for future routing but does not alter visible forms; standard Shopify Revamp continues to use `service_type = shopify_makeover`.
 
 The reusable Questionnaire Builder and complete Custom Shopify Theme intake are Phase 2.3 work. Custom Website Build intake is Phase 2.4 work.
+
+### Phase 2.3 questionnaires
+See [`docs/PHASE_2_3_QUESTIONNAIRES.md`](PHASE_2_3_QUESTIONNAIRES.md) for the reusable builder, schema, field inventory, snapshot/upload security, assignment rules, deployment, rollback, and pending live tests.

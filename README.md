@@ -150,3 +150,6 @@ Admins can manage products, contract templates, and orders from the admin area. 
 Products store an allowlisted intake type: `shopify_revamp_standard`, `shopify_custom_kit`, `website_custom_build`, or `general_service`. Products default to `general_service`; the field is a `VARCHAR`, not a database enum. Product details can show multiple live examples ordered by display order and ID while retaining screenshots, the single demo URL, and optional demo password.
 
 Phase 2.2 does not change visible purchase forms: Standard Shopify Revamp still uses the existing `shopify_makeover` service-type flow. The reusable Questionnaire Builder and complete Custom Shopify Theme intake are Phase 2.3 work, and Custom Website Build intake is Phase 2.4 work. Existing deployments require the Phase 2.2 migration. Because the repository has no confirmed production identifier for the standard Shopify Revamp, verify the production product and classify it using one exact ID or verified slug after migration; see `docs/DEPLOYMENT.md`.
+
+### Phase 2.3 questionnaires
+See [`docs/PHASE_2_3_QUESTIONNAIRES.md`](docs/PHASE_2_3_QUESTIONNAIRES.md) for the reusable builder, schema, field inventory, snapshot/upload security, assignment rules, deployment, rollback, and pending live tests.

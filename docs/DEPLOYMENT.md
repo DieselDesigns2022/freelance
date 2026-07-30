@@ -223,3 +223,6 @@ SHOW CREATE TABLE product_live_examples;
 Verify the correct standard product classification, admin create/edit intake selection, live-example add/edit/display-order/delete behavior, conditional public display, and unchanged Standard Shopify Revamp purchase form. The Questionnaire Builder and complete Custom Shopify Theme intake are Phase 2.3 work; Custom Website Build intake is Phase 2.4 work.
 
 Live deployment record: the migration was applied successfully on MariaDB 10.11. `products.intake_type` and `product_live_examples` were verified, and Product ID 1 was classified as `shopify_revamp_standard`. Public page smoke checks returned HTTP 200, and unauthenticated `admin/products.php` correctly redirected to admin login.
+
+### Phase 2.3 questionnaires
+See [`docs/PHASE_2_3_QUESTIONNAIRES.md`](PHASE_2_3_QUESTIONNAIRES.md) for the reusable builder, schema, field inventory, snapshot/upload security, assignment rules, deployment, rollback, and pending live tests.

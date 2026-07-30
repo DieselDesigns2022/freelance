@@ -168,3 +168,6 @@ Public signing links use a random token generated with `random_bytes()`. Only `h
 ## Phase 2.1 Shopify Revamp Development Notes
 
 Phase 2.1 makes Shopify Revamp the first focused product flow. Admin product edit supports screenshots/product images, and products support demo URL/password fields. `purchase.php` shows Shopify-specific intake fields for `shopify_makeover` products and warns customers not to enter Shopify admin passwords. Orders store intake JSON, a readable intake summary, and customer IP/user-agent data. Signing remains token-based, records consent timestamps and a signed-contract hash, and moves orders to `payment_pending` after signing. Diesel Designs sends payment instructions or an invoice manually; optional order notification is environment-configured through `ADMIN_ORDER_EMAIL` or `ORDER_NOTIFY_EMAIL`.
+
+### Phase 2.3 questionnaires
+See [`docs/PHASE_2_3_QUESTIONNAIRES.md`](docs/PHASE_2_3_QUESTIONNAIRES.md) for the reusable builder, schema, field inventory, snapshot/upload security, assignment rules, deployment, rollback, and pending live tests.

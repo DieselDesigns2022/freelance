@@ -149,3 +149,6 @@ Product screenshots reuse the hardened `uploads/portfolio/` path and are validat
 
 ## Phase 2.1 corrective hardening
 Order creation now wraps order and contract-instance writes in an explicit transaction with rollback on failure and a generic public error message. Admin signed-contract copies distinguish pending, voided, signed, and unexpected contract states, and downloads are still emitted only for signed contracts.
+
+### Phase 2.3 questionnaires
+See [`docs/PHASE_2_3_QUESTIONNAIRES.md`](PHASE_2_3_QUESTIONNAIRES.md) for the reusable builder, schema, field inventory, snapshot/upload security, assignment rules, deployment, rollback, and pending live tests.
