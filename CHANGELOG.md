@@ -69,3 +69,8 @@
 
 ## Phase 2.3 — Questionnaire Builder
 - Added reusable questionnaire administration, dynamic product intake, immutable order snapshots/answers, field-associated protected uploads, and seeded Standard Shopify Revamp and draft Custom Shopify Theme questionnaires.
+- Added the compact single-column field-card builder with inline editing, add-at-position controls, drag-and-drop ordering, Move Up/Move Down fallbacks, selected-question imports, full-questionnaire draft copies, preview, and collision-safe generated keys.
+- Clarified the administrator labels for stored `file` and `multiple_files` types as **File Upload** and **Multiple File Uploads** without changing upload behavior or storage.
+- Added the stored `addon` field type for flat-fee, per-additional-item, and quantity-priced manual-invoice upgrades. Admin dollar input is converted to integer cents, and server calculations—not informational browser totals—are authoritative.
+- Added immutable per-answer add-on pricing snapshots, aggregate questionnaire add-on totals, and the Admin Order **Manual Invoice Add-Ons** display. Add-ons do not collect payment or change product, Stripe, contract, or manual-payment behavior.
+- Added the additive, rerunnable `database/migrations/20260730_phase_2_3_questionnaire_addons.sql`; live migration and browser/order regression testing remain pending.

@@ -99,4 +99,11 @@ The app uses direct PHP files instead of a front controller.
 The reusable Questionnaire Builder and complete Custom Shopify Theme intake are Phase 2.3 work. Custom Website Build intake is Phase 2.4 work.
 
 ### Phase 2.3 questionnaires
-See [`docs/PHASE_2_3_QUESTIONNAIRES.md`](PHASE_2_3_QUESTIONNAIRES.md) for the reusable builder, schema, field inventory, snapshot/upload security, assignment rules, deployment, rollback, and pending live tests.
+- `/admin/questionnaires.php`: authenticated questionnaire list, new blank draft, and **Copy Existing Questionnaire** creation. A copy retains all field configuration, leaves its source unchanged, and resolves destination key collisions.
+- `/admin/questionnaires-edit.php?id=...`: authenticated compact field-card builder with one inline editor, add/add-at-position, import, duplicate, drag-and-drop reorder, and Move Up/Move Down controls. Historical key/type restrictions remain enforced.
+- `/admin/questionnaires-preview.php?id=...`: authenticated, non-submitting questionnaire preview, including upload display labels and realistic add-on controls.
+- `/purchase.php?product=...`: renders an assigned active questionnaire. Add-on JavaScript totals are informational; the order POST recalculates integer-cent totals on the server and does not collect payment.
+- `/admin/order-view.php?id=...`: reads immutable questionnaire answers/snapshots and displays selected upgrades under **Manual Invoice Add-Ons**.
+- `/admin/order-upload.php?id=...`: continues to authorize protected questionnaire uploads by the owned order upload record; add-ons do not change this route.
+
+See [`docs/PHASE_2_3_QUESTIONNAIRES.md`](PHASE_2_3_QUESTIONNAIRES.md) for definitions, snapshot/upload security, deployment, and pending live tests.

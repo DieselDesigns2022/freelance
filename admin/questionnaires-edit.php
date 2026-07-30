@@ -277,6 +277,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errors[] = 'Option fields require at least one non-empty option.';
             }
 
+            if ($type === 'addon') {
+                $method = (string) ($fieldValues['pricing_method'] ?? '');
+                $price = trim((string) ($fieldValues['price'] ?? ''));
+                $priceCents = questionnaire_dollars_to_cents($price);
+                if (!in_array($method, QUESTIONNAIRE_ADDON_PRICING_METHODS, true)) $errors[] = 'Choose a valid add-on pricing method.';
+                if ($priceCents === null) $errors[] = 'Price must be a non-negative dollar amount with no more than two decimal places.';
+                $validation['pricing_method'] = $method;
+                $validation['unit_price_cents'] = $priceCents ?? -1;
+                foreach (['included_quantity', 'min_quantity', 'max_quantity', 'quantity_step'] as $setting) {
+                    $raw = trim((string) ($fieldValues[$setting] ?? ($setting === 'quantity_step' ? '1' : '0')));
+                    if (preg_match('/^\d+$/', $raw) !== 1) $errors[] = ucwords(str_replace('_', ' ', $setting)) . ' must be a non-negative integer.';
+                    $validation[$setting] = preg_match('/^\d+$/', $raw) === 1 ? (int) $raw : -1;
+                }
+                if ($validation['quantity_step'] < 1) $errors[] = 'Quantity step must be at least 1.';
+                if ($validation['max_quantity'] < $validation['min_quantity']) $errors[] = 'Minimum quantity cannot exceed maximum quantity.';
+                if ($method === 'flat_fee') {
+                    $validation['included_quantity'] = 0; $validation['min_quantity'] = 0; $validation['max_quantity'] = 1; $validation['quantity_step'] = 1;
+                }
+            }
+
             if ($existing && questionnaire_field_has_history(db(), $id, (string) $existing['field_key'])) {
                 if ($key !== $existing['field_key']) {
                     $errors[] = 'A historical field key cannot change; duplicate and deactivate the old field instead.';
@@ -351,7 +371,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $label,
                     trim((string) ($fieldValues['admin_label'] ?? '')) ?: null,
                     trim((string) ($fieldValues['help_text'] ?? '')) ?: null,
-                    $structural ? null : (trim((string) ($fieldValues['placeholder'] ?? '')) ?: null),
+                    ($structural || $type === 'addon') ? null : (trim((string) ($fieldValues['placeholder'] ?? '')) ?: null),
                     in_array($type, QUESTIONNAIRE_OPTION_TYPES, true) ? json_encode($options, JSON_THROW_ON_ERROR) : null,
                     $validation ? json_encode($validation, JSON_THROW_ON_ERROR) : null,
                     $structural ? 0 : (isset($fieldValues['is_required']) ? 1 : 0),
@@ -430,6 +450,10 @@ $importTemplates = $templatesStmt->fetchAll();
 $importFields = [];
 foreach ($importTemplates as $template) {
     $importFields[(int) $template['id']] = load_questionnaire_fields(db(), (int) $template['id']);
+    foreach ($importFields[(int) $template['id']] as &$importField) {
+        $importField['field_type_label'] = questionnaire_field_type_label((string) $importField['field_type']);
+    }
+    unset($importField);
 }
 
 function render_field_editor(array $values, bool $editing, int $fieldId, int $sortOrder, int $insertionIndex = 0): void
@@ -448,7 +472,7 @@ function render_field_editor(array $values, bool $editing, int $fieldId, int $so
             <select name="field_type" data-field-type required>
                 <option value="" <?= $type === '' ? 'selected' : '' ?> disabled>Choose a field type first</option>
                 <?php foreach (QUESTIONNAIRE_FIELD_TYPES as $choice): ?>
-                    <option value="<?= e($choice) ?>" <?= $type === $choice ? 'selected' : '' ?>><?= e(ucwords(str_replace('_', ' ', $choice))) ?></option>
+                    <option value="<?= e($choice) ?>" <?= $type === $choice ? 'selected' : '' ?>><?= e(questionnaire_field_type_label($choice)) ?></option>
                 <?php endforeach; ?>
             </select>
         </label>
@@ -485,6 +509,22 @@ function render_field_editor(array $values, bool $editing, int $fieldId, int $so
             <label data-control="file-count">Maximum file count
                 <input type="number" min="1" name="max_file_count" value="<?= e((string) ($validation['max_file_count'] ?? '')) ?>">
             </label>
+            <div data-control="addon-settings">
+                <label>Pricing method *<select name="pricing_method">
+                    <option value="flat_fee" <?= ($validation['pricing_method'] ?? '') === 'flat_fee' ? 'selected' : '' ?>>Flat fee</option>
+                    <option value="per_additional_item" <?= ($validation['pricing_method'] ?? '') === 'per_additional_item' ? 'selected' : '' ?>>Per additional item</option>
+                    <option value="quantity_priced" <?= ($validation['pricing_method'] ?? '') === 'quantity_priced' ? 'selected' : '' ?>>Quantity priced</option>
+                </select></label>
+                <div class="product-form-grid">
+                    <?php $priceValue = array_key_exists('price', $values) ? (string) $values['price'] : (isset($validation['unit_price_cents']) ? questionnaire_cents_to_dollars((int) $validation['unit_price_cents']) : ''); ?>
+                    <label>Price *<input type="text" inputmode="decimal" name="price" value="<?= e($priceValue) ?>" placeholder="0.00"></label>
+                    <label data-addon-included>Included quantity<input type="number" min="0" step="1" name="included_quantity" value="<?= e((string) ($validation['included_quantity'] ?? '0')) ?>"></label>
+                    <label data-addon-quantity>Minimum selectable quantity<input type="number" min="0" step="1" name="min_quantity" value="<?= e((string) ($validation['min_quantity'] ?? '0')) ?>"></label>
+                    <label data-addon-quantity>Maximum selectable quantity<input type="number" min="0" step="1" name="max_quantity" value="<?= e((string) ($validation['max_quantity'] ?? '0')) ?>"></label>
+                    <label data-addon-quantity>Quantity-step amount<input type="number" min="1" step="1" name="quantity_step" value="<?= e((string) ($validation['quantity_step'] ?? '1')) ?>"></label>
+                </div>
+                <p class="helper">Prices are saved in cents and are for manual invoicing only.</p>
+            </div>
             <div class="questionnaire-toggle-row">
                 <label data-control="required"><input type="checkbox" name="is_required" value="1" <?= !empty($values['is_required']) ? 'checked' : '' ?>> Required</label>
                 <label><input type="checkbox" name="is_active" value="1" <?= !isset($values['is_active']) || !empty($values['is_active']) ? 'checked' : '' ?>> Active</label>
@@ -540,7 +580,7 @@ include __DIR__ . '/includes/admin-header.php';
                         <button type="button" class="drag-handle" aria-label="Drag to reorder" title="Drag to reorder">⋮⋮</button>
                         <div class="questionnaire-card-copy">
                             <strong><?= e($field['label']) ?></strong>
-                            <span><?= e(ucwords(str_replace('_', ' ', $field['field_type']))) ?> · <?= in_array($field['field_type'], QUESTIONNAIRE_STRUCTURAL_TYPES, true) ? 'Optional' : (!empty($field['is_required']) ? 'Required' : 'Optional') ?> · <?= !empty($field['is_active']) ? 'Active' : 'Inactive' ?></span>
+                            <span><?= e(questionnaire_field_type_label($field['field_type'])) ?> · <?= in_array($field['field_type'], QUESTIONNAIRE_STRUCTURAL_TYPES, true) ? 'Optional' : (!empty($field['is_required']) ? 'Required' : 'Optional') ?> · <?= !empty($field['is_active']) ? 'Active' : 'Inactive' ?></span>
                         </div>
                         <div class="questionnaire-card-actions">
                             <a class="btn btn-small" href="questionnaires-edit.php?id=<?= $id ?>&field=<?= (int) $field['id'] ?>#field-<?= (int) $field['id'] ?>">Edit</a>
@@ -582,14 +622,14 @@ include __DIR__ . '/includes/admin-header.php';
  document.querySelectorAll('[data-add-at]').forEach(button=>button.addEventListener('click',()=>{ const index=Number(button.dataset.addAt); addDialog.querySelector('[name=insertion_index]').value=index; addDialog.showModal(); }));
  document.querySelector('[data-open-import]').addEventListener('click',()=>importDialog.showModal());
  document.querySelectorAll('[data-close-dialog]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog')?.close()));
- const configure=(form)=>{ const select=form.querySelector('[data-field-type]'), controls=form.querySelector('[data-editor-controls]'); const update=()=>{ const type=select.value; controls.hidden=!type; const visible={ 'admin-label':['section_heading','information'].includes(type), help:!['section_heading','information'].includes(type), placeholder:['short_text','long_text'].includes(type), options:['dropdown','radio','checkboxes'].includes(type), 'text-length':['short_text','long_text'].includes(type), 'number-range':type==='number', 'file-settings':['file','multiple_files'].includes(type), 'file-count':type==='multiple_files', required:!['section_heading','information'].includes(type) }; form.querySelectorAll('[data-control]').forEach(el=>el.hidden=!visible[el.dataset.control]); const caption=form.querySelector('[data-label-caption]'); caption.textContent=type==='section_heading'?'Wording':type==='information'?'Information text':'Question'; }; select.addEventListener('change',update); update(); };
- document.querySelectorAll('[data-questionnaire-field-form]').forEach(configure);
+ const configure=(form)=>{ const select=form.querySelector('[data-field-type]'), controls=form.querySelector('[data-editor-controls]'); const update=()=>{ const type=select.value; controls.hidden=!type; const visible={ 'admin-label':['section_heading','information','addon'].includes(type), help:!['section_heading','information'].includes(type), placeholder:['short_text','long_text'].includes(type), options:['dropdown','radio','checkboxes'].includes(type), 'text-length':['short_text','long_text'].includes(type), 'number-range':type==='number', 'file-settings':['file','multiple_files'].includes(type), 'file-count':type==='multiple_files', 'addon-settings':type==='addon', required:!['section_heading','information'].includes(type) }; form.querySelectorAll('[data-control]').forEach(el=>el.hidden=!visible[el.dataset.control]); const caption=form.querySelector('[data-label-caption]'); caption.textContent=type==='section_heading'?'Wording':type==='information'?'Information text':type==='addon'?'Customer-facing upgrade name':'Question'; }; select.addEventListener('change',update); update(); };
+ document.querySelectorAll('[data-questionnaire-field-form]').forEach(form=>{ configure(form); const pricing=form.querySelector('[name=pricing_method]'); const updatePricing=()=>{ const method=pricing.value; form.querySelectorAll('[data-addon-quantity]').forEach(el=>el.hidden=method==='flat_fee'); form.querySelector('[data-addon-included]').hidden=method!=='per_additional_item'; }; pricing.addEventListener('change',updatePricing); updatePricing(); });
  const list=document.querySelector('[data-field-list]'), order=document.querySelector('[data-field-order]'), save=document.querySelector('[data-save-order]'); let dragged;
  list?.addEventListener('dragstart',event=>{ dragged=event.target.closest('[data-field-id]'); dragged?.classList.add('is-dragging'); });
  list?.addEventListener('dragover',event=>{ event.preventDefault(); const target=event.target.closest('[data-field-id]'); if(target&&dragged&&target!==dragged){ const box=target.getBoundingClientRect(); list.insertBefore(dragged,event.clientY<box.top+box.height/2?target:target.nextSibling); } });
  list?.addEventListener('dragend',()=>{ dragged?.classList.remove('is-dragging'); order.value=[...list.querySelectorAll('[data-field-id]')].map(card=>card.dataset.fieldId).join(','); if(save) save.hidden=false; });
  const data=JSON.parse(document.querySelector('[data-import-data]').textContent), source=document.querySelector('[data-import-source]'), holder=document.querySelector('[data-import-fields]');
- source.addEventListener('change',()=>{ const fields=data[source.value]||[]; holder.innerHTML=fields.length?'<label><input type="checkbox" data-select-all> Select all</label>'+fields.map(field=>`<label><input type="checkbox" name="import_field_ids[]" value="${Number(field.id)}"> ${escapeHtml(field.label)} <small>(${escapeHtml(field.field_type.replaceAll('_',' '))})</small></label>`).join(''):'<p class="helper">This questionnaire has no fields.</p>'; holder.querySelector('[data-select-all]')?.addEventListener('change',event=>holder.querySelectorAll('[name="import_field_ids[]"]').forEach(box=>box.checked=event.target.checked)); });
+ source.addEventListener('change',()=>{ const fields=data[source.value]||[]; holder.innerHTML=fields.length?'<label><input type="checkbox" data-select-all> Select all</label>'+fields.map(field=>`<label><input type="checkbox" name="import_field_ids[]" value="${Number(field.id)}"> ${escapeHtml(field.label)} <small>(${escapeHtml(field.field_type_label)})</small></label>`).join(''):'<p class="helper">This questionnaire has no fields.</p>'; holder.querySelector('[data-select-all]')?.addEventListener('change',event=>holder.querySelectorAll('[name="import_field_ids[]"]').forEach(box=>box.checked=event.target.checked)); });
  function escapeHtml(value){ const node=document.createElement('span'); node.textContent=String(value); return node.innerHTML; }
 })();
 </script>

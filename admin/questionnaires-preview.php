@@ -17,7 +17,9 @@ include __DIR__ . '/includes/admin-header.php';
 <?php foreach ($questionnaire['fields'] as $field): $type=$field['field_type']; ?>
   <?php if ($type === 'section_heading'): ?><h2><?= e($field['label']) ?></h2>
   <?php elseif ($type === 'information'): ?><p><?= nl2br(e($field['label'])) ?></p>
-  <?php else: ?><div class="questionnaire-preview-field"><strong><?= e($field['label']) ?><?= !empty($field['is_required']) ? ' *' : '' ?></strong><?php if ($field['help_text']): ?><small><?= e($field['help_text']) ?></small><?php endif; ?><div class="questionnaire-preview-input"><?= in_array($type, QUESTIONNAIRE_OPTION_TYPES, true) ? e(implode(' · ', $field['options'])) : e(ucwords(str_replace('_', ' ', $type))) ?></div></div><?php endif; ?>
+  <?php else: ?><div class="questionnaire-preview-field"><strong><?= e($field['label']) ?><?= !empty($field['is_required']) ? ' *' : '' ?></strong><?php if ($field['help_text']): ?><small><?= e($field['help_text']) ?></small><?php endif; ?>
+  <?php if ($type === 'addon'): $config=questionnaire_addon_config($field); ?><div class="questionnaire-preview-input"><p><?= $config['pricing_method']==='per_additional_item' ? e($config['included_quantity'].' included · ') : '' ?>+<?= e(money_format_dd($config['unit_price_cents'])) ?><?= $config['pricing_method']==='flat_fee'?' flat fee':' each' ?></p><?= $config['pricing_method']==='flat_fee'?'<label><input type="checkbox" disabled> Add this upgrade</label>':'<label>Quantity <input type="number" value="'.$config['min_quantity'].'" disabled></label>' ?><p>Sample add-on total: <strong><?= e(money_format_dd($config['pricing_method']==='flat_fee'?0:$config['min_quantity']*$config['unit_price_cents'])) ?></strong></p></div>
+  <?php else: ?><div class="questionnaire-preview-input"><?= in_array($type, QUESTIONNAIRE_OPTION_TYPES, true) ? e(implode(' · ', $field['options'])) : e(questionnaire_field_type_label($type)) ?></div><?php endif; ?></div><?php endif; ?>
 <?php endforeach; ?>
 </section>
 <?php include __DIR__ . '/includes/admin-footer.php'; ?>
