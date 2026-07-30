@@ -207,12 +207,12 @@ include __DIR__ . '/includes/admin-header.php';
                         Selected quantity: <?= (int) ($addon['selected_quantity'] ?? 0) ?><br>
                         <?php if (($addon['pricing_method'] ?? '') === 'per_additional_item'): ?>Included quantity: <?= (int) ($addon['included_quantity'] ?? 0) ?><br><?php endif; ?>
                         Billable quantity: <?= (int) ($addon['billable_quantity'] ?? 0) ?><br>
-                        Unit price: <?= e(money_format_dd((int) ($addon['unit_price_cents'] ?? 0))) ?><br>
-                        Line total: <strong><?= e(money_format_dd((int) ($addon['total_cents'] ?? 0))) ?></strong>
+                        Unit price: <?= e(questionnaire_format_cents((int) ($addon['unit_price_cents'] ?? 0))) ?><br>
+                        Line total: <strong><?= e(questionnaire_format_cents((int) ($addon['total_cents'] ?? 0))) ?></strong>
                     </dd>
                 </dl>
             <?php endforeach; ?>
-            <p><strong>Total Additional Amount to Invoice: <?= e(money_format_dd($savedAddonTotal)) ?></strong></p>
+            <p><strong>Total Additional Amount to Invoice: <?= e(questionnaire_format_cents($savedAddonTotal)) ?></strong></p>
         <?php endif; ?>
     <?php else: ?>
     <?php $intakeAnswers = $order['intake_answers_json'] ? json_decode($order['intake_answers_json'], true) : []; ?>

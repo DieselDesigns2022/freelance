@@ -69,7 +69,7 @@ $addonField = static function (string $method, int $price, int $included=0, int 
 };
 [$errors,$flat] = questionnaire_calculate_addon($addonField('flat_fee', 5000), '1');
 assert(!$errors && $flat['total_cents'] === 5000 && $flat['billable_quantity'] === 1);
-[$errors,$additional] = questionnaire_calculate_addon($addonField('per_additional_item', 200, 20), '3');
+[$errors,$additional] = questionnaire_calculate_addon($addonField('per_additional_item', 200, 20, 0, 50), '23');
 assert(!$errors && $additional['included_quantity'] === 20 && $additional['billable_quantity'] === 3 && $additional['total_cents'] === 600);
 [$errors,$quantity] = questionnaire_calculate_addon($addonField('quantity_priced', 500), '4');
 assert(!$errors && $quantity['total_cents'] === 2000);
@@ -94,5 +94,38 @@ $sourceId=(int)$pdo->lastInsertId();
 assert(questionnaire_copy_fields($pdo,3,4,[$sourceId],0)===1);
 $copied=load_questionnaire_fields($pdo,4)[0];
 assert($copied['validation']['unit_price_cents']===5000 && $copied['field_type']==='addon', 'Import/copy must retain all add-on configuration.');
+
+
+
+assert(questionnaire_format_cents(200) === '$2.00');
+assert(questionnaire_format_cents(1250) === '$12.50');
+
+$perAdditionalField = [
+    'label' => 'Additional Collection Covers',
+    'validation' => [
+        'pricing_method' => 'per_additional_item',
+        'unit_price_cents' => 200,
+        'included_quantity' => 20,
+        'min_quantity' => 0,
+        'max_quantity' => 50,
+        'quantity_step' => 1,
+    ],
+];
+
+[$addonErrors, $addonAnswer] = questionnaire_calculate_addon($perAdditionalField, '27');
+assert($addonErrors === []);
+assert($addonAnswer['selected_quantity'] === 27);
+assert($addonAnswer['billable_quantity'] === 7);
+assert($addonAnswer['total_cents'] === 1400);
+
+[$addonErrors, $addonAnswer] = questionnaire_calculate_addon($perAdditionalField, '20');
+assert($addonErrors === []);
+assert($addonAnswer['billable_quantity'] === 0);
+assert($addonAnswer['total_cents'] === 0);
+
+[$addonErrors, $addonAnswer] = questionnaire_calculate_addon($perAdditionalField, '15');
+assert($addonErrors === []);
+assert($addonAnswer['billable_quantity'] === 0);
+assert($addonAnswer['total_cents'] === 0);
 
 echo "Questionnaire builder focused tests passed\n";

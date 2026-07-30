@@ -1061,6 +1061,7 @@ button:disabled,
 }
 
 /* Focused, single-column questionnaire builder. */
+[data-questionnaire-field-form] [hidden] { display: none !important; }
 .questionnaire-builder { max-width: 980px; margin: 0 auto; }
 .questionnaire-builder-header { margin-bottom: 1.25rem; border-top: 4px solid var(--teal); }
 .questionnaire-settings { display: grid; grid-template-columns: 1fr 180px; gap: 1rem; }

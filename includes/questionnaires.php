@@ -45,6 +45,11 @@ function questionnaire_cents_to_dollars(int $cents): string
     return intdiv(max(0, $cents), 100) . '.' . str_pad((string) (max(0, $cents) % 100), 2, '0', STR_PAD_LEFT);
 }
 
+function questionnaire_format_cents(int $cents): string
+{
+    return '$' . questionnaire_cents_to_dollars($cents);
+}
+
 function questionnaire_addon_config(array $field): array
 {
     $config = is_array($field['validation'] ?? null) ? $field['validation'] : [];
@@ -82,7 +87,7 @@ function questionnaire_calculate_addon(array $field, mixed $submitted): array
         if ($selected < $config['min_quantity'] || $selected > $config['max_quantity']) $errors[] = 'is outside the allowed range.';
         if ($config['quantity_step'] > 0 && (($selected - $config['min_quantity']) % $config['quantity_step']) !== 0) $errors[] = 'does not match the required quantity step.';
     }
-    $billable = $config['pricing_method'] === 'per_additional_item' ? max(0, $selected) : $selected;
+    $billable = $config['pricing_method'] === 'per_additional_item' ? max(0, $selected - $config['included_quantity']) : $selected;
     if ($billable > 0 && $config['unit_price_cents'] > intdiv(PHP_INT_MAX, $billable)) {
         $errors[] = 'total is too large.';
         $total = 0;
