@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
-            flash('error', $exception->getMessage());
+            flash('error', 'The questionnaire could not be duplicated. Please try again.');
             redirect('questionnaires.php');
         }
     }
