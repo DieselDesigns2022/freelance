@@ -198,3 +198,6 @@ ORDER BY id;
 ```
 
 After verifying the correct record, update only its exact ID or exact verified slug, retaining guards for `service_type = 'shopify_makeover'` and `intake_type = 'general_service'`. Broadly updating all Shopify Make-Over rows is unsafe because only verified premade Shopify Revamp products should receive `shopify_revamp_standard`. See `docs/DEPLOYMENT.md` for the guarded update.
+
+### Phase 2.3 questionnaires
+See [`docs/PHASE_2_3_QUESTIONNAIRES.md`](PHASE_2_3_QUESTIONNAIRES.md) for the reusable builder, schema, field inventory, snapshot/upload security, assignment rules, deployment, rollback, and pending live tests.

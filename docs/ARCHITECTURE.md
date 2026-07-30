@@ -101,3 +101,6 @@ The purchase flow creates an `orders` record with customer details and product s
 Contract signing is token-based. The public token route resolves only one contract instance by token hash and never lists orders or contracts. Admin order management controls order/payment statuses separately from contract statuses; signed status is produced by the public signing flow, not by an admin dropdown.
 
 Phase 2.1 extends the storefront for the Shopify Revamp flow. Products can include demo URL/password fields, and `product_images` stores screenshots displayed on product detail pages. Shopify intake answers are stored in `orders.intake_answers_json`, with a readable summary in `project_notes`, and orders capture customer IP/user-agent data. Contract signing stores consent timestamps and a signed-contract hash. Payment remains manual with invoice/payment-instruction follow-up; no live gateway is implemented.
+
+### Phase 2.3 questionnaires
+See [`docs/PHASE_2_3_QUESTIONNAIRES.md`](PHASE_2_3_QUESTIONNAIRES.md) for the reusable builder, schema, field inventory, snapshot/upload security, assignment rules, deployment, rollback, and pending live tests.

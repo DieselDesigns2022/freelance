@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
+require_once __DIR__ . '/../includes/questionnaires.php';
 
 require_admin();
 
@@ -24,6 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $demoPassword = trim($_POST['demo_password'] ?? '');
     $contractTemplateId = trim($_POST['contract_template_id'] ?? '');
     $contractTemplate = null;
+    $questionnaireTemplateId = trim($_POST['questionnaire_template_id'] ?? '');
 
     if ($name === '') {
         $errors[] = 'Name is required.';
@@ -59,6 +61,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($status === 'active' && (!$contractTemplate || $contractTemplate['status'] !== 'active')) {
         $errors[] = 'Active products must have an active contract template assigned.';
     }
+    $errors = array_merge(
+        $errors,
+        validate_product_questionnaire_assignment(db(), $intakeType, $status, $questionnaireTemplateId)
+    );
 
     $slug = '';
     if ($name !== '') {
@@ -81,8 +87,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$errors) {
         $insertStmt = db()->prepare(
             'INSERT INTO products '
-            . '(name,slug,short_description,full_description,service_type,intake_type,fulfillment_type,price,deposit_amount,turnaround_text,includes_text,requirements_text,status,is_featured,sort_order,contract_template_id,demo_url,demo_password,created_at) '
-            . 'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())'
+            . '(name,slug,short_description,full_description,service_type,intake_type,fulfillment_type,price,deposit_amount,turnaround_text,includes_text,requirements_text,status,is_featured,sort_order,contract_template_id,questionnaire_template_id,demo_url,demo_password,created_at) '
+            . 'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())'
         );
         $insertStmt->execute([
             $name,
@@ -101,6 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             isset($_POST['is_featured']) ? 1 : 0,
             0,
             $contractTemplateId === '' ? null : (int) $contractTemplateId,
+            $questionnaireTemplateId === '' ? null : (int) $questionnaireTemplateId,
             $demoUrl ?: null,
             $demoPassword ?: null,
         ]);

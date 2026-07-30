@@ -229,3 +229,6 @@ Verify:
 ### Phase 2.2 recorded versus pending checks
 
 Recorded checks include PHP syntax linting, `git diff --check`, static review of allowlisting, URL validation, escaping, ownership predicates, safe link attributes, migration types, and missing-table guards. Live testing also verified the MariaDB migration, schema definitions, exact standard-product classification, public HTTP 200 smoke checks, the admin login redirect, the Standard Shopify Revamp intake selection, its single demo URL/password controls, and the reorganized admin product layout. Custom Shopify Theme live testing also verified product creation, accurate service and intake labels, conditional Live Examples management, adding multiple examples, public display ordering by `sort_order, id`, and routing Custom Shopify Theme products to Shopify Make-Overs instead of Website Builds. Cross-product manipulation attempts and mobile browser testing remain pending.
+
+### Phase 2.3 questionnaires
+See [`docs/PHASE_2_3_QUESTIONNAIRES.md`](PHASE_2_3_QUESTIONNAIRES.md) for the reusable builder, schema, field inventory, snapshot/upload security, assignment rules, deployment, rollback, and pending live tests.

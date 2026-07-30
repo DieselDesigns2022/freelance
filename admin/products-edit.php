@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
+require_once __DIR__ . '/../includes/questionnaires.php';
 
 require_admin();
 
@@ -157,6 +158,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     } elseif ($action === 'save') {
+        $existingQuestionnaireTemplateId = $product['questionnaire_template_id']
+            ? (int) $product['questionnaire_template_id']
+            : null;
         $product = array_merge($product, $_POST);
         $name = trim($_POST['name'] ?? '');
         $slug = trim($_POST['slug'] ?? '') ?: slugify($name);
@@ -170,6 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $demoPassword = trim($_POST['demo_password'] ?? '');
         $contractTemplateId = trim($_POST['contract_template_id'] ?? '');
         $contractTemplate = null;
+        $questionnaireTemplateId = trim($_POST['questionnaire_template_id'] ?? '');
 
         if ($name === '') {
             $errors[] = 'Name is required.';
@@ -206,6 +211,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($status === 'active' && (!$contractTemplate || $contractTemplate['status'] !== 'active')) {
             $errors[] = 'Active products must have an active contract template assigned.';
         }
+        $errors = array_merge(
+            $errors,
+            validate_product_questionnaire_assignment(
+                db(),
+                $intakeType,
+                $status,
+                $questionnaireTemplateId,
+                $existingQuestionnaireTemplateId
+            )
+        );
 
         $dupe = db()->prepare('SELECT id FROM products WHERE slug = ? AND id != ?');
         $dupe->execute([$slug, $id]);
@@ -218,7 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'UPDATE products SET name=?, slug=?, short_description=?, full_description=?, service_type=?, intake_type=?, '
                 . 'fulfillment_type=?, price=?, deposit_amount=?, turnaround_text=?, includes_text=?, '
                 . 'requirements_text=?, status=?, is_featured=?, sort_order=?, contract_template_id=?, '
-                . 'demo_url=?, demo_password=?, updated_at=NOW() WHERE id=?'
+                . 'questionnaire_template_id=?, demo_url=?, demo_password=?, updated_at=NOW() WHERE id=?'
             )->execute([
                 $name,
                 $slug,
@@ -236,6 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 isset($_POST['is_featured']) ? 1 : 0,
                 (int) ($_POST['sort_order'] ?? 0),
                 $contractTemplateId === '' ? null : (int) $contractTemplateId,
+                $questionnaireTemplateId === '' ? null : (int) $questionnaireTemplateId,
                 $demoUrl ?: null,
                 $demoPassword ?: null,
                 $id,

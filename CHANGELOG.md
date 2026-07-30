@@ -66,3 +66,6 @@
 - Added Shopify Revamp-specific public intake questions with a clear warning not to enter Shopify admin passwords.
 - Contract signing remains token based and manual-payment only; no live payment gateway, PDF generation, or initials support was added.
 - Optional order notification uses PHP `mail()` only when `ADMIN_ORDER_EMAIL` or `ORDER_NOTIFY_EMAIL` is configured.
+
+## Phase 2.3 — Questionnaire Builder
+- Added reusable questionnaire administration, dynamic product intake, immutable order snapshots/answers, field-associated protected uploads, and seeded Standard Shopify Revamp and draft Custom Shopify Theme questionnaires.

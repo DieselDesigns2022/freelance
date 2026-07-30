@@ -21,6 +21,7 @@ $currentAdmin = admin_user();
             <a href="dashboard.php">Dashboard</a>
             <a href="projects.php">Projects</a>
             <a href="products.php">Products</a>
+            <a href="questionnaires.php">Questionnaires</a>
             <a href="contract-templates.php">Contract Templates</a>
             <a href="orders.php">Orders</a>
             <a href="requests.php">Requests</a>

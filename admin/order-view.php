@@ -34,6 +34,22 @@ if (table_exists(db(), 'order_uploads')) {
     $uploadStmt->execute([$id]);
     $orderUploads = $uploadStmt->fetchAll();
 }
+$questionnaireSnapshot = null;
+$questionnaireAnswers = [];
+if (table_exists(db(), 'order_questionnaire_snapshots') && table_exists(db(), 'order_questionnaire_answers')) {
+    $snapshotStmt = db()->prepare('SELECT * FROM order_questionnaire_snapshots WHERE order_id = ?');
+    $snapshotStmt->execute([$id]);
+    $questionnaireSnapshot = $snapshotStmt->fetch() ?: null;
+    if ($questionnaireSnapshot) {
+        $answerStmt = db()->prepare('SELECT * FROM order_questionnaire_answers WHERE order_id = ? AND questionnaire_snapshot_id = ? ORDER BY sort_order,id');
+        $answerStmt->execute([$id, (int) $questionnaireSnapshot['id']]);
+        foreach ($answerStmt->fetchAll() as $answer) $questionnaireAnswers[$answer['field_key']] = $answer;
+    }
+}
+$generalOrderUploads = array_values(array_filter(
+    $orderUploads,
+    static fn (array $upload): bool => !$questionnaireSnapshot || empty($upload['questionnaire_field_key'])
+));
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
@@ -142,6 +158,35 @@ include __DIR__ . '/includes/admin-header.php';
     <p><?= e($order['product_name_snapshot']) ?> — <?= e(money_format_dd($order['product_price_snapshot'])) ?> (<?= e(service_type_label($order['service_type_snapshot'])) ?>)</p>
     <p><?= nl2br(e($order['project_notes'] ?? '')) ?></p>
 
+    <?php if ($questionnaireSnapshot): ?>
+        <?php
+        $structure = json_decode($questionnaireSnapshot['questionnaire_snapshot_json'], true);
+        $snapshotValid = is_array($structure) && is_array($structure['fields'] ?? null);
+        $snapshotFields = $snapshotValid ? $structure['fields'] : [];
+        ?>
+        <h2>Questionnaire Responses: <?= e($questionnaireSnapshot['questionnaire_title']) ?></h2>
+        <?php if (!$snapshotValid): ?>
+            <p class="error-text">The saved questionnaire snapshot is malformed and cannot be displayed safely. The stored record has not been changed.</p>
+        <?php endif; ?>
+        <?php foreach ($snapshotFields as $field): ?>
+            <?php if (!is_array($field)): ?>
+                <p class="error-text">A saved questionnaire field is malformed and was skipped.</p>
+                <?php continue; ?>
+            <?php endif; ?>
+            <?php $type = $field['field_type'] ?? ''; ?>
+            <?php if ($type === 'section_heading'): ?><h3><?= e($field['label'] ?? '') ?></h3>
+            <?php elseif ($type === 'information'): ?><p class="notice"><?= nl2br(e($field['label'] ?? '')) ?></p>
+            <?php else: $answer = $questionnaireAnswers[$field['field_key'] ?? ''] ?? null; $value = $answer && $answer['answer_json'] ? json_decode($answer['answer_json'], true) : ($answer['answer_text'] ?? ''); ?>
+                <dl><dt><?= e($field['label'] ?? '') ?></dt><dd>
+                <?php if (is_array($value)): ?><?= e($value ? implode(', ', $value) : 'Not answered') ?>
+                <?php elseif ($type === 'url' && $value && valid_url_or_blank((string) $value)): ?><a href="<?= e((string) $value) ?>" target="_blank" rel="noopener"><?= e((string) $value) ?></a>
+                <?php elseif ($type === 'yes_no'): ?><?= e($value === 'yes' ? 'Yes' : ($value === 'no' ? 'No' : 'Not answered')) ?>
+                <?php else: ?><?= $value !== '' ? nl2br(e((string) $value)) : 'Not answered' ?><?php endif; ?>
+                <?php foreach ($orderUploads as $upload): if (($upload['questionnaire_field_key'] ?? null) !== ($field['field_key'] ?? null)) continue; ?><br><a href="order-upload.php?id=<?= (int) $upload['id'] ?>"><?= e($upload['original_name']) ?></a><?php endforeach; ?>
+                </dd></dl>
+            <?php endif; ?>
+        <?php endforeach; ?>
+    <?php else: ?>
     <?php $intakeAnswers = $order['intake_answers_json'] ? json_decode($order['intake_answers_json'], true) : []; ?>
     <?php if (is_array($intakeAnswers) && $intakeAnswers): ?>
         <h2>Shopify Revamp Intake</h2>
@@ -152,14 +197,15 @@ include __DIR__ . '/includes/admin-header.php';
             <?php endforeach; ?>
         </dl>
     <?php endif; ?>
+    <?php endif; ?>
 
-    <?php if ($orderUploads): ?>
+    <?php if ($generalOrderUploads): ?>
         <h2>Uploaded Files</h2>
         <div class="order-upload-list">
-            <?php foreach ($orderUploads as $upload): ?>
+            <?php foreach ($generalOrderUploads as $upload): ?>
                 <article class="order-upload-card">
                     <strong><?= e(ucfirst((string) $upload['upload_type'])) ?></strong><br>
-                    <a href="../<?= e($upload['file_path']) ?>" target="_blank" rel="noopener">
+                    <a href="order-upload.php?id=<?= (int) $upload['id'] ?>" target="_blank" rel="noopener">
                         <?= e($upload['original_name'] ?: basename((string) $upload['file_path'])) ?>
                     </a>
                     <br>
