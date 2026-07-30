@@ -18,6 +18,7 @@ $questionnaire = [
     'internal_description' => '',
     'status' => 'draft',
 ];
+$templates = db()->query("SELECT id, title FROM questionnaire_templates WHERE status <> 'archived' ORDER BY title")->fetchAll();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
@@ -26,6 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title = trim((string) ($questionnaire['title'] ?? ''));
     $description = trim((string) ($questionnaire['internal_description'] ?? ''));
     $status = (string) ($questionnaire['status'] ?? 'draft');
+    $creationMode = (string) ($_POST['creation_mode'] ?? 'blank');
+    $sourceId = (int) ($_POST['source_questionnaire_id'] ?? 0);
 
     if ($title === '') {
         $errors[] = 'Title is required.';
@@ -35,6 +38,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($status === 'active') {
         $errors[] = 'Create the questionnaire as a draft, add valid fields, and then activate it.';
+    }
+    if (!in_array($creationMode, ['blank', 'copy'], true)) {
+        $errors[] = 'Choose how to start the questionnaire.';
+    }
+    if ($creationMode === 'copy') {
+        $sourceStmt = db()->prepare('SELECT id FROM questionnaire_templates WHERE id = ?');
+        $sourceStmt->execute([$sourceId]);
+        if (!$sourceStmt->fetchColumn()) $errors[] = 'Choose an existing questionnaire to copy.';
     }
 
     if ($title !== '') {
@@ -46,14 +57,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!$errors) {
-        $insertStmt = db()->prepare(
-            'INSERT INTO questionnaire_templates '
-            . '(title, internal_description, status, created_at, updated_at) '
-            . 'VALUES (?, ?, ?, NOW(), NOW())'
-        );
-        $insertStmt->execute([$title, $description ?: null, $status]);
-
-        redirect('questionnaires-edit.php?id=' . (int) db()->lastInsertId());
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $insertStmt = $pdo->prepare('INSERT INTO questionnaire_templates (title, internal_description, status, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())');
+            $insertStmt->execute([$title, $description ?: null, $status]);
+            $newId = (int) $pdo->lastInsertId();
+            if ($creationMode === 'copy') {
+                $sourceFields = load_questionnaire_fields($pdo, $sourceId);
+                questionnaire_copy_fields($pdo, $sourceId, $newId, array_column($sourceFields, 'id'), 0);
+            }
+            $pdo->commit();
+            redirect('questionnaires-edit.php?id=' . $newId);
+        } catch (Throwable $exception) {
+            $pdo->rollBack();
+            $errors[] = 'The questionnaire could not be created.';
+        }
     }
 }
 
@@ -88,6 +107,16 @@ include __DIR__ . '/includes/admin-header.php';
         <small>New questionnaires must remain draft until valid fields have been added.</small>
     </label>
 
+    <fieldset class="questionnaire-start-options">
+        <legend>Start with</legend>
+        <label><input type="radio" name="creation_mode" value="blank" <?= ($_POST['creation_mode'] ?? 'blank') === 'blank' ? 'checked' : '' ?>> Start Blank</label>
+        <label><input type="radio" name="creation_mode" value="copy" <?= ($_POST['creation_mode'] ?? '') === 'copy' ? 'checked' : '' ?>> Copy Existing Questionnaire</label>
+        <label data-copy-source>Questionnaire to copy
+            <select name="source_questionnaire_id"><option value="">Choose a questionnaire</option><?php foreach ($templates as $template): ?><option value="<?= (int) $template['id'] ?>" <?= (int) ($_POST['source_questionnaire_id'] ?? 0) === (int) $template['id'] ? 'selected' : '' ?>><?= e($template['title']) ?></option><?php endforeach; ?></select>
+        </label>
+    </fieldset>
+
     <button class="btn btn-accent">Create and add fields</button>
 </form>
+<script>(()=>{const modes=document.querySelectorAll('[name=creation_mode]'), source=document.querySelector('[data-copy-source]'); const update=()=>source.hidden=document.querySelector('[name=creation_mode]:checked').value!=='copy'; modes.forEach(mode=>mode.addEventListener('change',update)); update();})();</script>
 <?php include __DIR__ . '/includes/admin-footer.php'; ?>

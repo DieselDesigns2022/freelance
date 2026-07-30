@@ -23,6 +23,82 @@ function questionnaire_field_key_is_valid(string $key): bool
     return preg_match('/^[a-z][a-z0-9_]{1,99}$/', $key) === 1;
 }
 
+function questionnaire_unique_field_key(PDO $pdo, int $templateId, string $requestedKey): string
+{
+    $base = strtolower(trim(preg_replace('/[^a-z0-9_]+/', '_', $requestedKey) ?? '', '_'));
+    if ($base === '' || !preg_match('/^[a-z]/', $base)) {
+        $base = 'question_' . $base;
+    }
+    if (strlen($base) < 2) {
+        $base .= '_field';
+    }
+    $base = substr($base, 0, 90);
+    $candidate = $base;
+    $suffix = 2;
+    $stmt = $pdo->prepare('SELECT 1 FROM questionnaire_fields WHERE questionnaire_template_id = ? AND field_key = ?');
+    while (true) {
+        $stmt->execute([$templateId, $candidate]);
+        if (!$stmt->fetchColumn()) {
+            if (!questionnaire_field_key_is_valid($candidate)) {
+                throw new RuntimeException('Unable to generate a valid field key.');
+            }
+            return $candidate;
+        }
+        $candidate = substr($base, 0, 90) . '_' . $suffix++;
+    }
+}
+
+/** Rewrites the complete owned field order; unknown, duplicate, or omitted IDs are rejected. */
+function questionnaire_save_field_order(PDO $pdo, int $templateId, array $submittedIds): bool
+{
+    $stmt = $pdo->prepare('SELECT id FROM questionnaire_fields WHERE questionnaire_template_id = ? ORDER BY sort_order, id');
+    $stmt->execute([$templateId]);
+    $owned = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    $submitted = array_map('intval', $submittedIds);
+    if (count($owned) !== count($submitted) || count($submitted) !== count(array_unique($submitted))) {
+        return false;
+    }
+    $expected = $owned;
+    sort($expected);
+    $actual = $submitted;
+    sort($actual);
+    if ($expected !== $actual) {
+        return false;
+    }
+    $update = $pdo->prepare('UPDATE questionnaire_fields SET sort_order = ?, updated_at = NOW() WHERE id = ? AND questionnaire_template_id = ?');
+    foreach ($submitted as $index => $fieldId) {
+        $update->execute([($index + 1) * 10, $fieldId, $templateId]);
+    }
+    return true;
+}
+
+/** Copies fields without changing their source and resolves destination key collisions. */
+function questionnaire_copy_fields(PDO $pdo, int $sourceId, int $destinationId, array $fieldIds, int $insertIndex): int
+{
+    $sourceStmt = $pdo->prepare('SELECT * FROM questionnaire_fields WHERE questionnaire_template_id = ? ORDER BY sort_order, id');
+    $sourceStmt->execute([$sourceId]);
+    $selected = array_flip(array_map('intval', $fieldIds));
+    $sourceFields = array_values(array_filter($sourceStmt->fetchAll(), static fn (array $field): bool => isset($selected[(int) $field['id']])));
+    if (!$sourceFields) {
+        return 0;
+    }
+    $destination = load_questionnaire_fields($pdo, $destinationId);
+    $insertIndex = max(0, min($insertIndex, count($destination)));
+    $insert = $pdo->prepare('INSERT INTO questionnaire_fields (questionnaire_template_id, field_key, field_type, label, admin_label, help_text, placeholder, options_json, validation_json, is_required, is_active, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())');
+    $newIds = [];
+    foreach ($sourceFields as $field) {
+        $key = questionnaire_unique_field_key($pdo, $destinationId, (string) $field['field_key']);
+        $insert->execute([$destinationId, $key, $field['field_type'], $field['label'], $field['admin_label'], $field['help_text'], $field['placeholder'], $field['options_json'], $field['validation_json'], $field['is_required'], $field['is_active'], 0]);
+        $newIds[] = (int) $pdo->lastInsertId();
+    }
+    $order = array_map(static fn (array $field): int => (int) $field['id'], $destination);
+    array_splice($order, $insertIndex, 0, $newIds);
+    if (!questionnaire_save_field_order($pdo, $destinationId, $order)) {
+        throw new RuntimeException('The imported field order could not be saved.');
+    }
+    return count($newIds);
+}
+
 function questionnaire_snapshots_contain_field_key(array $snapshotJsonRows, string $fieldKey): bool
 {
     foreach ($snapshotJsonRows as $snapshotJson) {
