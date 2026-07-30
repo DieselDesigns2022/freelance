@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
+require_once __DIR__ . '/../includes/questionnaires.php';
 
 require_admin();
 
@@ -176,6 +177,7 @@ include __DIR__ . '/includes/admin-header.php';
             <?php $type = $field['field_type'] ?? ''; ?>
             <?php if ($type === 'section_heading'): ?><h3><?= e($field['label'] ?? '') ?></h3>
             <?php elseif ($type === 'information'): ?><p class="notice"><?= nl2br(e($field['label'] ?? '')) ?></p>
+            <?php elseif ($type === 'addon'): ?><dl><dt><?= e($field['label'] ?? '') ?></dt><dd>See Manual Invoice Add-Ons below.</dd></dl>
             <?php else: $answer = $questionnaireAnswers[$field['field_key'] ?? ''] ?? null; $value = $answer && $answer['answer_json'] ? json_decode($answer['answer_json'], true) : ($answer['answer_text'] ?? ''); ?>
                 <dl><dt><?= e($field['label'] ?? '') ?></dt><dd>
                 <?php if (is_array($value)): ?><?= e($value ? implode(', ', $value) : 'Not answered') ?>
@@ -186,6 +188,32 @@ include __DIR__ . '/includes/admin-header.php';
                 </dd></dl>
             <?php endif; ?>
         <?php endforeach; ?>
+        <?php
+        $savedAddons = [];
+        foreach ($questionnaireAnswers as $savedAnswer) {
+            if (($savedAnswer['field_type'] ?? '') !== 'addon') continue;
+            $addon = json_decode((string) ($savedAnswer['addon_snapshot_json'] ?? $savedAnswer['answer_json'] ?? ''), true);
+            if (is_array($addon) && (int) ($addon['total_cents'] ?? 0) > 0) $savedAddons[] = $addon;
+        }
+        $savedAddonTotal = questionnaire_addon_total($savedAddons);
+        ?>
+        <h2>Manual Invoice Add-Ons</h2>
+        <?php if (!$savedAddons): ?><p>No paid add-ons selected.</p><?php else: ?>
+            <?php foreach ($savedAddons as $addon): ?>
+                <dl>
+                    <dt><?= e((string) ($addon['upgrade_name'] ?? 'Add-on')) ?></dt>
+                    <dd>
+                        <?= e(match ($addon['pricing_method'] ?? '') { 'flat_fee'=>'Flat fee', 'per_additional_item'=>'Per additional item', 'quantity_priced'=>'Quantity priced', default=>'Saved pricing' }) ?><br>
+                        Selected quantity: <?= (int) ($addon['selected_quantity'] ?? 0) ?><br>
+                        <?php if (($addon['pricing_method'] ?? '') === 'per_additional_item'): ?>Included quantity: <?= (int) ($addon['included_quantity'] ?? 0) ?><br><?php endif; ?>
+                        Billable quantity: <?= (int) ($addon['billable_quantity'] ?? 0) ?><br>
+                        Unit price: <?= e(money_format_dd((int) ($addon['unit_price_cents'] ?? 0))) ?><br>
+                        Line total: <strong><?= e(money_format_dd((int) ($addon['total_cents'] ?? 0))) ?></strong>
+                    </dd>
+                </dl>
+            <?php endforeach; ?>
+            <p><strong>Total Additional Amount to Invoice: <?= e(money_format_dd($savedAddonTotal)) ?></strong></p>
+        <?php endif; ?>
     <?php else: ?>
     <?php $intakeAnswers = $order['intake_answers_json'] ? json_decode($order['intake_answers_json'], true) : []; ?>
     <?php if (is_array($intakeAnswers) && $intakeAnswers): ?>

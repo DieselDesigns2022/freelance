@@ -4,11 +4,102 @@ declare(strict_types=1);
 const QUESTIONNAIRE_STATUSES = ['draft', 'active', 'archived'];
 const QUESTIONNAIRE_FIELD_TYPES = [
     'short_text', 'long_text', 'email', 'phone', 'url', 'number', 'date', 'yes_no',
-    'dropdown', 'radio', 'checkboxes', 'file', 'multiple_files', 'information', 'section_heading',
+    'dropdown', 'radio', 'checkboxes', 'file', 'multiple_files', 'addon', 'information', 'section_heading',
 ];
 const QUESTIONNAIRE_STRUCTURAL_TYPES = ['information', 'section_heading'];
 const QUESTIONNAIRE_OPTION_TYPES = ['dropdown', 'radio', 'checkboxes'];
 const QUESTIONNAIRE_FILE_TYPES = ['file', 'multiple_files'];
+const QUESTIONNAIRE_ADDON_PRICING_METHODS = ['flat_fee', 'per_additional_item', 'quantity_priced'];
+
+function questionnaire_field_type_label(string $type): string
+{
+    return match ($type) {
+        'file' => 'File Upload',
+        'multiple_files' => 'Multiple File Uploads',
+        'addon' => 'Add-On / Upgrade',
+        default => ucwords(str_replace('_', ' ', $type)),
+    };
+}
+
+/** Converts a non-negative decimal dollar string to cents without floating point arithmetic. */
+function questionnaire_dollars_to_cents(string $dollars): ?int
+{
+    $dollars = trim($dollars);
+    if (preg_match('/^(\d+)(?:\.(\d{1,2}))?$/', $dollars, $matches) !== 1) {
+        return null;
+    }
+    $whole = ltrim($matches[1], '0');
+    $whole = $whole === '' ? '0' : $whole;
+    $fraction = str_pad($matches[2] ?? '', 2, '0');
+    $cents = ltrim($whole . $fraction, '0');
+    $cents = $cents === '' ? '0' : $cents;
+    $maximum = (string) PHP_INT_MAX;
+    if (strlen($cents) > strlen($maximum) || (strlen($cents) === strlen($maximum) && strcmp($cents, $maximum) > 0)) {
+        return null;
+    }
+    return (int) $cents;
+}
+
+function questionnaire_cents_to_dollars(int $cents): string
+{
+    return intdiv(max(0, $cents), 100) . '.' . str_pad((string) (max(0, $cents) % 100), 2, '0', STR_PAD_LEFT);
+}
+
+function questionnaire_addon_config(array $field): array
+{
+    $config = is_array($field['validation'] ?? null) ? $field['validation'] : [];
+    return [
+        'pricing_method' => in_array($config['pricing_method'] ?? '', QUESTIONNAIRE_ADDON_PRICING_METHODS, true) ? $config['pricing_method'] : '',
+        'unit_price_cents' => filter_var($config['unit_price_cents'] ?? null, FILTER_VALIDATE_INT) !== false ? (int) $config['unit_price_cents'] : -1,
+        'included_quantity' => filter_var($config['included_quantity'] ?? 0, FILTER_VALIDATE_INT) !== false ? (int) ($config['included_quantity'] ?? 0) : -1,
+        'min_quantity' => filter_var($config['min_quantity'] ?? 0, FILTER_VALIDATE_INT) !== false ? (int) ($config['min_quantity'] ?? 0) : -1,
+        'max_quantity' => filter_var($config['max_quantity'] ?? 0, FILTER_VALIDATE_INT) !== false ? (int) ($config['max_quantity'] ?? 0) : -1,
+        'quantity_step' => filter_var($config['quantity_step'] ?? 1, FILTER_VALIDATE_INT) !== false ? (int) ($config['quantity_step'] ?? 1) : -1,
+    ];
+}
+
+/** Returns an immutable, integer-cent answer snapshot or validation errors. */
+function questionnaire_calculate_addon(array $field, mixed $submitted): array
+{
+    $config = questionnaire_addon_config($field);
+    $errors = [];
+    if ($config['pricing_method'] === '' || $config['unit_price_cents'] < 0) $errors[] = 'has invalid pricing configuration.';
+    foreach (['included_quantity', 'min_quantity', 'max_quantity'] as $key) if ($config[$key] < 0) $errors[] = 'has invalid quantity configuration.';
+    if ($config['quantity_step'] < 1) $errors[] = 'has an invalid quantity step.';
+    if ($config['max_quantity'] < $config['min_quantity']) $errors[] = 'has an invalid quantity range.';
+
+    $raw = is_scalar($submitted) ? trim((string) $submitted) : '';
+    if ($config['pricing_method'] === 'flat_fee') {
+        if (!in_array($raw, ['', '0', '1'], true)) $errors[] = 'has an invalid selection.';
+        $selected = $raw === '1' ? 1 : 0;
+    } else {
+        if ($raw === '' || preg_match('/^\d+$/', $raw) !== 1) {
+            $selected = 0;
+            $errors[] = 'must be a non-negative whole number.';
+        } else {
+            $selected = (int) $raw;
+        }
+        if ($selected < $config['min_quantity'] || $selected > $config['max_quantity']) $errors[] = 'is outside the allowed range.';
+        if ($config['quantity_step'] > 0 && (($selected - $config['min_quantity']) % $config['quantity_step']) !== 0) $errors[] = 'does not match the required quantity step.';
+    }
+    $billable = $config['pricing_method'] === 'per_additional_item' ? max(0, $selected) : $selected;
+    if ($billable > 0 && $config['unit_price_cents'] > intdiv(PHP_INT_MAX, $billable)) {
+        $errors[] = 'total is too large.';
+        $total = 0;
+    } else {
+        $total = $billable * max(0, $config['unit_price_cents']);
+    }
+    return [array_values(array_unique($errors)), [
+        'upgrade_name' => (string) ($field['label'] ?? ''), 'pricing_method' => $config['pricing_method'],
+        'unit_price_cents' => $config['unit_price_cents'], 'included_quantity' => $config['included_quantity'],
+        'selected_quantity' => $selected, 'billable_quantity' => $billable, 'total_cents' => $total,
+    ]];
+}
+
+function questionnaire_addon_total(array $answers): int
+{
+    return array_sum(array_map(static fn ($answer): int => is_array($answer) && isset($answer['total_cents']) ? max(0, (int) $answer['total_cents']) : 0, $answers));
+}
 
 function questionnaire_tables_ready(PDO $pdo): bool
 {
@@ -239,6 +330,11 @@ function questionnaire_definition_errors(array $fields): array
                 $errors[] = 'Active option fields cannot contain empty or duplicate options.';
             }
         }
+        if ($type === 'addon') {
+            $addonConfig = questionnaire_addon_config($field);
+            [$addonErrors] = questionnaire_calculate_addon($field, (string) ($addonConfig['pricing_method'] === 'flat_fee' ? 0 : max(0, $addonConfig['min_quantity'])));
+            foreach ($addonErrors as $error) $errors[] = ($field['label'] ?? 'Add-on') . ' ' . $error;
+        }
     }
 
     if ($activeCount === 0) {
@@ -373,6 +469,13 @@ function validate_questionnaire_submission(array $template, array $posted, array
         }
 
         $raw = $postedAnswers[$key] ?? null;
+        if ($type === 'addon') {
+            [$addonErrors, $addon] = questionnaire_calculate_addon($field, $raw);
+            if (!empty($field['is_required']) && ($addon['selected_quantity'] ?? 0) === 0) $addonErrors[] = 'is required.';
+            foreach ($addonErrors as $error) $errors[] = $field['label'] . ' ' . $error;
+            $answers[$key] = $addon;
+            continue;
+        }
         if (is_array($raw) && $type !== 'checkboxes') {
             $errors[] = $field['label'] . ' has an invalid submission.';
             continue;

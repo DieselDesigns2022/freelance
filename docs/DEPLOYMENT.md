@@ -225,4 +225,10 @@ Verify the correct standard product classification, admin create/edit intake sel
 Live deployment record: the migration was applied successfully on MariaDB 10.11. `products.intake_type` and `product_live_examples` were verified, and Product ID 1 was classified as `shopify_revamp_standard`. Public page smoke checks returned HTTP 200, and unauthenticated `admin/products.php` correctly redirected to admin login.
 
 ### Phase 2.3 questionnaires
-See [`docs/PHASE_2_3_QUESTIONNAIRES.md`](PHASE_2_3_QUESTIONNAIRES.md) for the reusable builder, schema, field inventory, snapshot/upload security, assignment rules, deployment, rollback, and pending live tests.
+After the base Phase 2.3 builder migration, apply the manual-invoice add-on migration before allowing an administrator to activate/use an `addon` field in an order:
+
+```bash
+mysql -u <user> -p diesel_portfolio < database/migrations/20260730_phase_2_3_questionnaire_addons.sql
+```
+
+The migration is additive and rerunnable. Verify `order_questionnaire_snapshots.total_addon_cents` and `order_questionnaire_answers.addon_snapshot_json` exist before testing the public workflow. Do not mark the migration, browser flow, order snapshot, Admin Order display, uploads, or contract signing verified until the pending live checklist in [`docs/TESTING.md`](TESTING.md) has actually been completed. See [`docs/PHASE_2_3_QUESTIONNAIRES.md`](PHASE_2_3_QUESTIONNAIRES.md) for the full deployment sequence and rollback guidance.

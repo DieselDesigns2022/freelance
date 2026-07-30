@@ -332,4 +332,8 @@ Stores one generated contract for an order. Key columns include `order_id`, null
 Existing deployments must run `database/migrations/20260710_phase_2_1_shopify_revamp_flow.sql`. The migration is additive for MariaDB 10.11: `products.demo_url`, `products.demo_password`, `product_images`, Shopify intake/customer audit columns on `orders`, and consent/hash fields on `contract_instances`.
 
 ### Phase 2.3 questionnaires
-See [`docs/PHASE_2_3_QUESTIONNAIRES.md`](PHASE_2_3_QUESTIONNAIRES.md) for the reusable builder, schema, field inventory, snapshot/upload security, assignment rules, deployment, rollback, and pending live tests.
+Questionnaire fields keep type-specific configuration in `validation_json`. Upload types remain stored as `file` and `multiple_files`; **File Upload** and **Multiple File Uploads** are administrator display labels only. Manual-invoice upgrades use stored type `addon` and pricing methods `flat_fee`, `per_additional_item`, or `quantity_priced`. Admin-entered decimal dollar strings are converted without floating point and stored as `unit_price_cents`.
+
+Apply `database/migrations/20260730_phase_2_3_questionnaire_addons.sql` before using add-ons in the order workflow. The migration is additive and rerunnable: it adds unsigned `order_questionnaire_snapshots.total_addon_cents` and nullable JSON `order_questionnaire_answers.addon_snapshot_json`. Existing answer rows are not renamed or rewritten.
+
+The answer JSON preserves upgrade name, pricing method, unit price, included quantity, selected quantity, billable quantity, and line total. `total_addon_cents` preserves the questionnaire-wide amount for manual invoicing. These submitted values are immutable historical pricing; changing current field configuration does not change an existing order. See [`docs/PHASE_2_3_QUESTIONNAIRES.md`](PHASE_2_3_QUESTIONNAIRES.md) for builder behavior, upload security, assignment rules, deployment, rollback, and pending live tests.

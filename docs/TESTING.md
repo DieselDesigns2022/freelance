@@ -231,4 +231,24 @@ Verify:
 Recorded checks include PHP syntax linting, `git diff --check`, static review of allowlisting, URL validation, escaping, ownership predicates, safe link attributes, migration types, and missing-table guards. Live testing also verified the MariaDB migration, schema definitions, exact standard-product classification, public HTTP 200 smoke checks, the admin login redirect, the Standard Shopify Revamp intake selection, its single demo URL/password controls, and the reorganized admin product layout. Custom Shopify Theme live testing also verified product creation, accurate service and intake labels, conditional Live Examples management, adding multiple examples, public display ordering by `sort_order, id`, and routing Custom Shopify Theme products to Shopify Make-Overs instead of Website Builds. Cross-product manipulation attempts and mobile browser testing remain pending.
 
 ### Phase 2.3 questionnaires
-See [`docs/PHASE_2_3_QUESTIONNAIRES.md`](PHASE_2_3_QUESTIONNAIRES.md) for the reusable builder, schema, field inventory, snapshot/upload security, assignment rules, deployment, rollback, and pending live tests.
+Completed repository checks:
+
+- PHP lint passed for every PHP file changed by the questionnaire UX/add-on implementation.
+- `git diff --check` passed.
+- `tests/questionnaire_builder_test.php` passed with assertions enabled.
+- Focused assertions cover centralized File Upload/Multiple File Uploads labels while retaining `file`/`multiple_files`, all three integer-cent add-on methods, zero/minimum/maximum/step cases, deterministic dollar-to-cent conversion and malformed values, forged browser totals, immutable pricing snapshots, malformed historical snapshots, ordering, and imported/copied add-on configuration.
+- Static Admin Order review confirmed add-ons are not dumped as raw arrays and detailed selected items appear only in **Manual Invoice Add-Ons**.
+
+The following are explicitly pending until deployment/live testing and must not be treated as passed:
+
+- Live MySQL execution and rerun verification of `database/migrations/20260730_phase_2_3_questionnaire_addons.sql`.
+- Authenticated browser and builder visual testing.
+- Add, edit, import, Copy Existing Questionnaire, duplicate, drag-and-drop, Move Up/Move Down, and add-at-position interactions.
+- Public add-on rendering and JavaScript total updates.
+- Full order submission and immutable database snapshot verification.
+- Admin **Manual Invoice Add-Ons** display and **Total Additional Amount to Invoice** verification.
+- Existing single and multiple file-upload regression.
+- Contract-signing regression and confirmation that manual payment/product pricing remain unchanged.
+- Mobile and accessibility review.
+
+See [`docs/PHASE_2_3_QUESTIONNAIRES.md`](PHASE_2_3_QUESTIONNAIRES.md) for the complete behavior and deployment sequence.

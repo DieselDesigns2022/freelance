@@ -151,4 +151,8 @@ Product screenshots reuse the hardened `uploads/portfolio/` path and are validat
 Order creation now wraps order and contract-instance writes in an explicit transaction with rollback on failure and a generic public error message. Admin signed-contract copies distinguish pending, voided, signed, and unexpected contract states, and downloads are still emitted only for signed contracts.
 
 ### Phase 2.3 questionnaires
-See [`docs/PHASE_2_3_QUESTIONNAIRES.md`](PHASE_2_3_QUESTIONNAIRES.md) for the reusable builder, schema, field inventory, snapshot/upload security, assignment rules, deployment, rollback, and pending live tests.
+Questionnaire administration remains behind admin authentication and CSRF-protected POST actions. Field/template ownership predicates, prepared statements, collision-safe destination keys, and historical field-key/type restrictions apply to add, edit, duplicate, reorder, import, and full-questionnaire copy operations.
+
+The `file` and `multiple_files` stored types and protected upload pipeline are unchanged; their clearer admin labels do not weaken extension/size/count validation or protected order-upload access. For `addon`, the server parses admin dollar strings into integer cents without floating-point money operations, validates non-negative pricing and quantity ranges/steps, and recalculates submitted lines from saved configuration. Browser totals and unrecognized total inputs are never authoritative. Immutable answer/snapshot JSON supplies historical Admin Order pricing and is escaped on output. Add-ons remain manual-invoice metadata and do not enter Stripe, online payment, product-price, or contract calculations.
+
+Live upload, order, contract, browser, mobile, accessibility, and database-migration security regressions remain pending as listed in [`docs/TESTING.md`](TESTING.md).
