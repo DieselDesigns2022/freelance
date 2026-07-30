@@ -591,7 +591,10 @@ include __DIR__ . '/includes/admin-header.php';
             <?= csrf_field() ?><input type="hidden" name="action" value="add_rule">
             <label>Source question<select name="source_field_id" required data-rule-source><option value="">Choose a question</option><?php foreach($fields as $sourceField):if(in_array($sourceField['field_type'],QUESTIONNAIRE_STRUCTURAL_TYPES,true)||empty($sourceField['is_active']))continue;?><option value="<?= (int)$sourceField['id'] ?>" data-type="<?= e($sourceField['field_type']) ?>" data-options="<?= e(json_encode($sourceField['field_type']==='yes_no'?['yes','no']:($sourceField['options']??[]))) ?>"><?= e($sourceField['label']) ?></option><?php endforeach;?></select></label>
             <label>Condition<select name="operator" required data-rule-operator><option value="">Choose a source question first</option></select></label>
-            <label data-rule-comparison>Comparison value<input name="comparison_value" list="rule-comparison-options"><datalist id="rule-comparison-options" data-rule-options></datalist></label>
+            <label data-rule-comparison>Comparison value
+                <input name="comparison_value" list="rule-comparison-options">
+                <datalist id="rule-comparison-options" data-rule-options></datalist>
+            </label>
             <div class="questionnaire-rule-actions" data-rule-actions></div>
             <button class="btn btn-ghost" type="button" data-add-rule-action>Add action</button>
             <button class="btn btn-accent">Save rule</button>

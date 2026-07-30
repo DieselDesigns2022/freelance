@@ -268,5 +268,7 @@ assert(str_contains($purchaseSource,'questionnaire_definition_errors($questionna
 assert(str_contains($purchaseSource,'data-required-indicator') && str_contains($purchaseSource,'input.disabled=true'), 'Public rendering must expose a live required indicator and disable hidden controls.');
 assert(str_contains($purchaseSource,'data-conditional-field') && str_contains($previewSource,'questionnaire-preview-structural'), 'Public and preview structural fields require conditional metadata.');
 assert(str_contains(file_get_contents(__DIR__.'/../admin/questionnaires-edit.php'),'data-add-rule-action') && str_contains(file_get_contents(__DIR__.'/../admin/questionnaires-edit.php'),'data-remove-rule-action'), 'The builder must render an action repeater.');
+$builderSource=file_get_contents(__DIR__.'/../admin/questionnaires-edit.php');
+assert(str_contains($builderSource,'list="rule-comparison-options"') && str_contains($builderSource,'data-rule-options'), 'The comparison input must reference its rendered conditional-rule options datalist.');
 
 echo "Questionnaire builder focused tests passed\n";
