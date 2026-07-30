@@ -38,7 +38,7 @@ $statuses = ['draft', 'active', 'archived'];
         <textarea name="body" rows="16" required><?= e($template['body'] ?? '') ?></textarea>
     </label>
 
-    <p><strong>Placeholders:</strong> {{client_name}}, {{client_email}}, {{business_name}}, {{order_id}}, {{product_name}}, {{product_price}}, {{service_type}}, {{project_url}}, {{order_date}}, {{designer_name}}, {{site_name}}</p>
+    <p><strong>Placeholders:</strong> {{client_name}}, {{client_email}}, {{business_name}}, {{order_id}}, {{product_name}}, {{product_price}}, {{service_type}}, {{project_url}}, {{order_date}}, {{designer_name}}, {{site_name}}, {{shopify_store_url}}, {{shopify_store_name}}, {{main_goal}}, {{brand_colors}}, {{asset_link}}, {{featured_products}}, {{requested_sections}}, {{inspiration_links}}, {{launch_timing}}, {{extra_notes}}, {{intake_summary}}</p>
 
     <button class="btn btn-accent">Save Template</button>
 </form>

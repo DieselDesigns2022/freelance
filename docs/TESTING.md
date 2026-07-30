@@ -204,3 +204,28 @@ Verify:
 - Verify signed contracts show the already-signed state, allow signed copy/download, and do not show admin regenerate or void controls.
 - Verify voided contracts show unavailable messaging, cannot be signed, cannot be downloaded as signed copies, and cannot generate replacement signing links.
 - Verify regenerating a signing link invalidates previously generated raw links.
+
+## Phase 2.1 testing checklist
+- Run `php -l` against every PHP file.
+- Run `git diff --check`.
+- If a MySQL/MariaDB client is available, apply `database/migrations/20260710_phase_2_1_shopify_revamp_flow.sql` to a temporary database.
+- Verify the manual flow: active contract template, active Shopify Make-Over product, image upload, demo URL/password display, Shopify intake order creation, token signing, manual payment-pending message, admin intake/audit review, and optional `ADMIN_ORDER_EMAIL`/`ORDER_NOTIFY_EMAIL` notification behavior when server mail is configured.
+
+## Phase 2.2 testing checklist
+
+- Apply `database/migrations/20260729_phase_2_2_product_intake_live_examples.sql` only to a disposable database during testing; confirm `product_live_examples.product_id` is signed `INT`, its foreign key cascades, and intake type defaults to `general_service`.
+- Confirm create/edit accept only the four allowlisted intake types and retain active-contract-template validation.
+- Confirm an authenticated admin can add, edit, change display order, and delete examples only for the selected product; missing/invalid CSRF tokens and non-http(s) URLs must be rejected.
+- Confirm examples render in `sort_order, id` order with escaped titles/URLs and safe new-tab attributes, and no heading appears when none exist.
+- Confirm `shopify_revamp_standard` products show only the single demo URL/password controls and do not show the multiple Live Examples manager.
+- Confirm `shopify_custom_kit` and `website_custom_build` products show the multiple Live Examples manager and do not show the single demo URL/password controls.
+- Confirm the admin product form is grouped into clear Product Setup, Product Information, demo/live-example, and Product Images sections on desktop and mobile.
+- Regression-test product screenshots, demo URL/password, Shopify Make-Overs, Website Builds, the existing standard Shopify Revamp purchase questions, signing, and manual payment handling.
+- Submit forged or stale `save_live_example` and `delete_live_example` POST actions before the table exists; each must show the clean migration-required error and must not query `product_live_examples`.
+- Confirm the migration performs no automatic Shopify classification. Review its read-only candidate query and guarded exact-ID or exact verified-slug pattern; never update every `shopify_makeover` row.
+- Confirm `purchase.php` does not route by `intake_type` yet and standard Shopify Revamp still uses `service_type = shopify_makeover`.
+- Phase 2.2 does not include the Questionnaire Builder or complete Custom Shopify Theme intake planned for Phase 2.3, or the Custom Website Build intake planned for Phase 2.4.
+
+### Phase 2.2 recorded versus pending checks
+
+Recorded checks include PHP syntax linting, `git diff --check`, static review of allowlisting, URL validation, escaping, ownership predicates, safe link attributes, migration types, and missing-table guards. Live testing also verified the MariaDB migration, schema definitions, exact standard-product classification, public HTTP 200 smoke checks, the admin login redirect, the Standard Shopify Revamp intake selection, its single demo URL/password controls, and the reorganized admin product layout. Custom Shopify Theme live testing also verified product creation, accurate service and intake labels, conditional Live Examples management, adding multiple examples, public display ordering by `sort_order, id`, and routing Custom Shopify Theme products to Shopify Make-Overs instead of Website Builds. Cross-product manipulation attempts and mobile browser testing remain pending.

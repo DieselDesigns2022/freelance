@@ -151,6 +151,9 @@ mysql -u YOUR_USER -p YOUR_DATABASE < database/portfolio_schema.sql
 ### Store or admin product pages fail with missing table errors
 Run `database/migrations/20260710_phase_2_store_contract_system.sql` against the active MariaDB database.
 
+### Shopify Revamp product flow fails with missing column/table errors
+If product pages, product edit image management, purchase intake, signing, or signed contract copies fail with missing columns or tables such as `demo_url`, `demo_password`, `product_images`, `intake_answers_json`, `customer_ip`, `customer_user_agent`, `terms_agreed_at`, `esign_agreed_at`, or `signed_contract_hash`, the Phase 2.1 migration likely has not been run. Apply `database/migrations/20260710_phase_2_1_shopify_revamp_flow.sql` against the active MariaDB database.
+
 ### Store is empty
 Confirm products exist with `status = active`. Draft and archived products are intentionally hidden.
 
@@ -174,3 +177,24 @@ Replacement links are available only for pending, sent, or viewed contracts. Sig
 ### Signed copy download is blocked
 
 HTML signed-contract downloads are only available after the signing flow sets the contract instance status to `signed`.
+
+## Phase 2.2 Troubleshooting
+
+### Intake column or live-example table is unavailable
+
+An `Unknown column 'intake_type'` error, a missing `product_live_examples` error, or the admin message “Run the Phase 2.2 database migration before managing live examples.” usually means `database/migrations/20260729_phase_2_2_product_intake_live_examples.sql` has not been applied. Confirm migration status before assuming an application-code failure. The migration has not yet been applied in this Phase 2.2 workflow.
+
+Before approved execution, confirm `products.id` is signed `INT`; `product_live_examples.product_id` must also be signed `INT` for the cascading foreign key. After backup and migration, verify with `SHOW CREATE TABLE product_live_examples;`.
+
+### Standard Shopify Revamp remains `general_service`
+
+This is expected immediately after migration because the repository has no confirmed production ID or slug and the migration does not guess. List candidates read-only:
+
+```sql
+SELECT id, name, slug, service_type, intake_type
+FROM products
+WHERE service_type = 'shopify_makeover'
+ORDER BY id;
+```
+
+After verifying the correct record, update only its exact ID or exact verified slug, retaining guards for `service_type = 'shopify_makeover'` and `intake_type = 'general_service'`. Broadly updating all Shopify Make-Over rows is unsafe because only verified premade Shopify Revamp products should receive `shopify_revamp_standard`. See `docs/DEPLOYMENT.md` for the guarded update.

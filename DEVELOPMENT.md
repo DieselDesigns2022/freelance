@@ -27,7 +27,7 @@ The app is a simple page-controller PHP application. Each public or admin URL ma
 ### Phase 2 Public Store and Contract Routes
 
 - `/store.php`: lists active purchasable services/products.
-- `/product-service.php?slug=...`: shows an active product/service detail page.
+- `/product-service.php?slug=...`: shows an active product/service detail page, including ordered live examples when present, while retaining screenshots and legacy demo credentials.
 - `/purchase.php?product=...`: public order-start form that validates customer details, creates an order, snapshots product/template data, and creates a contract instance. Public purchase is blocked when the selected product lacks an active assigned contract template.
 - `/sign-contract.php?token=...`: secure token-based contract signing page.
 - `/contract-copy.php?token=...`: secure token-based contract copy view.
@@ -55,8 +55,8 @@ Token routes are private by token and marked noindex. Payment handling is manual
 ### Phase 2 Admin Store and Contract Pages
 
 - `admin/products.php`: lists products and archives products.
-- `admin/products-create.php`: creates products.
-- `admin/products-edit.php`: edits products.
+- `admin/products-create.php`: creates products and saves an allowlisted product intake type.
+- `admin/products-edit.php`: edits products and manages product-owned live examples, including display order, without a separate handler route. Missing-table actions show a migration-required error without querying the absent table.
 - `admin/product-form.php`: shared product form partial.
 - `admin/contract-templates.php`: lists contract templates.
 - `admin/contract-templates-create.php`: creates contract templates.
@@ -70,14 +70,14 @@ Token routes are private by token and marked noindex. Payment handling is manual
 ## Includes and Helpers
 
 - `includes/db.php`: creates a PDO connection using environment variables or defaults.
-- `includes/functions.php`: escaping, redirects, flash messages, labels, slug helpers, URL validation, image upload, safe image deletion, and project card rendering.
+- `includes/functions.php`: escaping, redirects, flash messages, labels, the product intake allowlist/labels, slug helpers, URL validation, image upload, safe image deletion, and project card rendering.
 - `includes/csrf.php`: CSRF token generation, form field rendering, and verification.
 - `includes/auth.php`: admin session helpers, login, logout, and route protection.
 - `includes/header.php` and `includes/footer.php`: public layout and contact CTA.
 
 ## Database Layer
 
-The app uses PDO configured in `includes/db.php`. SQL statements use prepared statements for application queries and writes. The schema is defined in `database/portfolio_schema.sql`.
+The app uses PDO configured in `includes/db.php`. SQL statements use prepared statements for application queries and writes. The schema is defined in `database/portfolio_schema.sql`; existing deployments apply additive migrations in phase order. Phase 2.2 migration and verification details are maintained in `docs/DEPLOYMENT.md`.
 
 ## Authentication
 
@@ -85,7 +85,7 @@ Authentication is session-based. `admin_users.password_hash` stores hashes creat
 
 ## CSRF
 
-Admin forms include `csrf_field()`. POST handlers call `verify_csrf()` before writes. CSRF protection is implemented for admin setup, login, project creation/editing/list actions, image management forms, public purchase forms, public signing forms, admin product create/edit/archive actions, admin contract template create/edit actions, admin order status updates, admin mark-contract-sent actions, admin void-contract actions, and admin replacement signing link generation.
+Admin forms include `csrf_field()`. POST handlers call `verify_csrf()` before writes. CSRF protection is implemented for admin setup, login, project creation/editing/list actions, image management forms, public purchase forms, public signing forms, admin product create/edit/archive actions (including Phase 2.2 live-example CRUD), admin contract template create/edit actions, admin order status updates, admin mark-contract-sent actions, admin void-contract actions, and admin replacement signing link generation.
 
 ## Security
 
@@ -121,6 +121,12 @@ Deployment is manual for now:
 8. Run smoke tests.
 
 No automated deployment is implemented.
+
+Phase 2.2 stores intake metadata for future routing but does not alter `purchase.php`: Standard Shopify Revamp intake still follows `service_type = shopify_makeover`. The reusable Questionnaire Builder and complete Custom Shopify Theme intake are Phase 2.3 work, and Custom Website Build intake is Phase 2.4 work.
+
+The admin product form is organized into focused cards for setup, customer-facing information, demo/live-example settings, and images. Products using `shopify_revamp_standard` display the single demo URL/password controls. Products using `shopify_custom_kit` or `website_custom_build` display the multiple Live Examples manager instead.
+
+The stored `website_kit` service type is displayed as Custom Shopify Theme and is listed on `shopify-makeovers.php`. The stored `shopify_custom_kit` intake type is also displayed as Custom Shopify Theme. The reusable Questionnaire Builder and assigned-questionnaire workflow are Phase 2.3 work.
 
 ## Recovery Workflow
 
@@ -158,3 +164,7 @@ The storefront is intentionally framework-free and follows the existing include 
 Products are public only when `products.status = active`. Active products should have an active `contract_templates` assignment because `purchase.php` blocks checkout when a contract is missing or inactive. Orders snapshot product and contract metadata at creation time. Contract instances store the original template body snapshot and the rendered contract snapshot.
 
 Public signing links use a random token generated with `random_bytes()`. Only `hash('sha256', $token)` is stored. Admins cannot recover old raw tokens; they can generate a replacement signing link before signing, which updates the hash and displays the raw URL once for copying.
+
+## Phase 2.1 Shopify Revamp Development Notes
+
+Phase 2.1 makes Shopify Revamp the first focused product flow. Admin product edit supports screenshots/product images, and products support demo URL/password fields. `purchase.php` shows Shopify-specific intake fields for `shopify_makeover` products and warns customers not to enter Shopify admin passwords. Orders store intake JSON, a readable intake summary, and customer IP/user-agent data. Signing remains token-based, records consent timestamps and a signed-contract hash, and moves orders to `payment_pending` after signing. Diesel Designs sends payment instructions or an invoice manually; optional order notification is environment-configured through `ADMIN_ORDER_EMAIL` or `ORDER_NOTIFY_EMAIL`.

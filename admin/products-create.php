@@ -14,13 +14,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $product = $_POST;
     $name = trim($_POST['name'] ?? '');
-    $slug = trim($_POST['slug'] ?? '') ?: slugify($name);
     $shortDescription = trim($_POST['short_description'] ?? '');
     $serviceType = $_POST['service_type'] ?? '';
-    $fulfillmentType = $_POST['fulfillment_type'] ?? '';
+    $intakeType = $_POST['intake_type'] ?? 'general_service';
+    $fulfillmentType = 'service';
     $status = $_POST['status'] ?? 'draft';
     $price = trim($_POST['price'] ?? '');
-    $deposit = trim($_POST['deposit_amount'] ?? '');
+    $demoUrl = trim($_POST['demo_url'] ?? '');
+    $demoPassword = trim($_POST['demo_password'] ?? '');
     $contractTemplateId = trim($_POST['contract_template_id'] ?? '');
     $contractTemplate = null;
 
@@ -33,8 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!in_array($serviceType, allowed_service_types(), true)) {
         $errors[] = 'Choose a valid service type.';
     }
-    if (!in_array($fulfillmentType, allowed_fulfillment_types(), true)) {
-        $errors[] = 'Choose a valid fulfillment type.';
+    if (!in_array($intakeType, allowed_product_intake_types(), true)) {
+        $errors[] = 'Choose a valid customer intake type.';
     }
     if (!in_array($status, allowed_product_statuses(), true)) {
         $errors[] = 'Choose a valid status.';
@@ -42,11 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($price === '' || !is_numeric($price) || (float) $price < 0) {
         $errors[] = 'Price must be a number greater than or equal to zero.';
     }
-    if ($deposit !== '' && (!is_numeric($deposit) || (float) $deposit < 0)) {
-        $errors[] = 'Deposit amount must be blank or a number greater than or equal to zero.';
-    }
-    if ($deposit !== '' && is_numeric($deposit) && is_numeric($price) && (float) $deposit > (float) $price) {
-        $errors[] = 'Deposit amount cannot be greater than the full price.';
+    if (!valid_url_or_blank($demoUrl)) {
+        $errors[] = 'Demo URL must be blank or start with http:// or https://.';
     }
 
     if ($contractTemplateId !== '') {
@@ -62,37 +60,95 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Active products must have an active contract template assigned.';
     }
 
-    $dupe = db()->prepare('SELECT id FROM products WHERE slug = ?');
-    $dupe->execute([$slug]);
-    if ($dupe->fetch()) {
-        $errors[] = 'Slug already exists.';
+    $slug = '';
+    if ($name !== '') {
+        $baseSlug = slugify($name);
+        $slug = $baseSlug;
+        $suffix = 2;
+
+        while (true) {
+            $dupe = db()->prepare('SELECT id FROM products WHERE slug = ?');
+            $dupe->execute([$slug]);
+
+            if (!$dupe->fetch()) {
+                break;
+            }
+
+            $slug = $baseSlug . '-' . $suffix++;
+        }
     }
 
     if (!$errors) {
-        db()->prepare(
+        $insertStmt = db()->prepare(
             'INSERT INTO products '
-            . '(name,slug,short_description,full_description,service_type,fulfillment_type,price,deposit_amount,turnaround_text,includes_text,requirements_text,status,is_featured,sort_order,contract_template_id,created_at) '
-            . 'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())'
-        )->execute([
+            . '(name,slug,short_description,full_description,service_type,intake_type,fulfillment_type,price,deposit_amount,turnaround_text,includes_text,requirements_text,status,is_featured,sort_order,contract_template_id,demo_url,demo_password,created_at) '
+            . 'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())'
+        );
+        $insertStmt->execute([
             $name,
             $slug,
             $shortDescription,
             trim($_POST['full_description'] ?? '') ?: null,
             $serviceType,
+            $intakeType,
             $fulfillmentType,
             (float) $price,
-            $deposit === '' ? null : (float) $deposit,
-            trim($_POST['turnaround_text'] ?? '') ?: null,
-            trim($_POST['includes_text'] ?? '') ?: null,
-            trim($_POST['requirements_text'] ?? '') ?: null,
+            null,
+            null,
+            null,
+            null,
             $status,
             isset($_POST['is_featured']) ? 1 : 0,
-            (int) ($_POST['sort_order'] ?? 0),
+            0,
             $contractTemplateId === '' ? null : (int) $contractTemplateId,
+            $demoUrl ?: null,
+            $demoPassword ?: null,
         ]);
 
-        flash('success', 'Product created.');
-        redirect('products.php');
+        $newProductId = (int) db()->lastInsertId();
+        $uploadedImages = 0;
+        $uploadErrors = [];
+
+        foreach (($_FILES['product_images']['name'] ?? []) as $idx => $unused) {
+            $file = [
+                'name' => $_FILES['product_images']['name'][$idx] ?? '',
+                'type' => $_FILES['product_images']['type'][$idx] ?? '',
+                'tmp_name' => $_FILES['product_images']['tmp_name'][$idx] ?? '',
+                'error' => $_FILES['product_images']['error'][$idx] ?? UPLOAD_ERR_NO_FILE,
+                'size' => $_FILES['product_images']['size'][$idx] ?? 0,
+            ];
+
+            [$imagePath, $uploadError] = upload_image($file);
+
+            if ($uploadError) {
+                $uploadErrors[] = $uploadError;
+                continue;
+            }
+
+            if ($imagePath) {
+                db()->prepare(
+                    'INSERT INTO product_images (product_id,image_path,alt_text,sort_order,created_at) '
+                    . 'VALUES (?,?,?,?,NOW())'
+                )->execute([
+                    $newProductId,
+                    $imagePath,
+                    trim($_POST['image_alt_text'] ?? '') ?: null,
+                    $idx,
+                ]);
+                $uploadedImages++;
+            }
+        }
+
+        $message = 'Product created.';
+        if ($uploadedImages > 0) {
+            $message .= ' ' . $uploadedImages . ' image' . ($uploadedImages === 1 ? '' : 's') . ' uploaded.';
+        }
+        if ($uploadErrors) {
+            $message .= ' Some images were not uploaded: ' . implode(' ', array_unique($uploadErrors));
+        }
+
+        flash('success', $message);
+        redirect('products-edit.php?id=' . $newProductId);
     }
 }
 

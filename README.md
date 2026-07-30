@@ -85,7 +85,7 @@ The application has:
 
 ### Not Implemented
 
-- General email-sending contact form is not implemented. The website request form is implemented, but no email notification is sent.
+- General contact/website request email sending is not implemented. Website requests are stored in admin without email notification. Phase 2.1 order notifications are optional and use PHP `mail()` only when `ADMIN_ORDER_EMAIL` or `ORDER_NOTIFY_EMAIL` is configured.
 - Pretty URL routing.
 - Canonical tags.
 - Open Graph metadata.
@@ -135,7 +135,7 @@ New admin pages:
 - `/admin/requests.php` and `/admin/request-view.php?id=...` — request review, status updates, admin notes, contact marking, archive, and delete.
 - `/admin/faqs.php`, `/admin/faqs-create.php`, and `/admin/faqs-edit.php?id=...` — FAQ management.
 
-No email sending, payment processing, or paid third-party services are implemented. Requests are stored in the admin panel only for now.
+General contact/website request email sending, payment processing, and paid third-party services are not implemented. Requests are stored in the admin panel only. Phase 2.1 order notifications are optional and use PHP `mail()` only when configured through `ADMIN_ORDER_EMAIL` or `ORDER_NOTIFY_EMAIL`.
 
 ## Phase 2 Storefront and Contract System
 
@@ -144,3 +144,9 @@ Phase 2 adds a store foundation for selling Diesel Designs website kits, website
 Each purchasable product must be assigned an active contract template before public ordering is allowed. The order flow snapshots product details and renders a contract instance so later edits to templates do not change previously generated or signed contracts. Customers sign through secure token links and can view or download a printable HTML contract copy after signing.
 
 Admins can manage products, contract templates, and orders from the admin area. Payment handling is manual only in this phase through payment status fields; no live payment gateway, card capture, Stripe, PayPal, Square, WooCommerce, or Shopify checkout integration is included.
+
+### Phase 2.2 Product Intake Types and Live Examples
+
+Products store an allowlisted intake type: `shopify_revamp_standard`, `shopify_custom_kit`, `website_custom_build`, or `general_service`. Products default to `general_service`; the field is a `VARCHAR`, not a database enum. Product details can show multiple live examples ordered by display order and ID while retaining screenshots, the single demo URL, and optional demo password.
+
+Phase 2.2 does not change visible purchase forms: Standard Shopify Revamp still uses the existing `shopify_makeover` service-type flow. The reusable Questionnaire Builder and complete Custom Shopify Theme intake are Phase 2.3 work, and Custom Website Build intake is Phase 2.4 work. Existing deployments require the Phase 2.2 migration. Because the repository has no confirmed production identifier for the standard Shopify Revamp, verify the production product and classify it using one exact ID or verified slug after migration; see `docs/DEPLOYMENT.md`.

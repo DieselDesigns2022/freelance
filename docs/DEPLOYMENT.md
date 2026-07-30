@@ -162,4 +162,64 @@ mysql -u <user> -p <database> < database/migrations/20260710_phase_2_store_contr
 
 After migration, create at least one active contract template in admin, then assign an active contract template to each product that should be purchasable. Public purchase is blocked for active products without an active contract template.
 
+For existing deployments that already applied Phase 2, also run the Phase 2.1 additive migration:
+
+```bash
+mysql -u <user> -p <database> < database/migrations/20260710_phase_2_1_shopify_revamp_flow.sql
+```
+
+Phase 2.1 adds product demo fields, product images, Shopify intake metadata, customer IP/user-agent capture, and contract signing audit fields. Payment remains manual, and there is no payment gateway deployment step.
+
 There is no payment gateway deployment step in Phase 2. Payment status is managed manually in admin. Signed contract downloads are HTML, so no PDF service or Composer dependency is required.
+
+## Phase 2.2 Deployment Notes
+
+Phase 2.2 was deployed to the Phase 2.2 VPS branch after file and database backups. For an existing deployment, apply migrations in order: (1) Phase 2, (2) Phase 2.1, and (3) Phase 2.2. Before Phase 2.2, obtain approval and take a full site, database, and uploads backup.
+
+```bash
+mysql -u <user> -p diesel_portfolio < database/migrations/20260729_phase_2_2_product_intake_live_examples.sql
+```
+
+The client prompts for the password; never put it in the command or documentation. Intake saving requires `products.intake_type`, and live-example management requires `product_live_examples`.
+
+List candidates without changing data:
+
+```sql
+SELECT id, name, slug, service_type, intake_type
+FROM products
+WHERE service_type = 'shopify_makeover'
+ORDER BY id;
+```
+
+After verifying the standard Shopify Revamp record, classify only its exact ID:
+
+```sql
+UPDATE products
+SET intake_type = 'shopify_revamp_standard'
+WHERE id = <verified_product_id>
+  AND service_type = 'shopify_makeover'
+  AND intake_type = 'general_service';
+```
+
+Alternatively, use an exact verified slug:
+
+```sql
+UPDATE products
+SET intake_type = 'shopify_revamp_standard'
+WHERE slug = '<verified_exact_slug>'
+  AND service_type = 'shopify_makeover'
+  AND intake_type = 'general_service';
+```
+
+Broadly updating every `shopify_makeover` product is unsafe because only verified premade Shopify Revamp products should receive `shopify_revamp_standard`.
+
+Post-migration verification:
+
+```sql
+SHOW COLUMNS FROM products LIKE 'intake_type';
+SHOW CREATE TABLE product_live_examples;
+```
+
+Verify the correct standard product classification, admin create/edit intake selection, live-example add/edit/display-order/delete behavior, conditional public display, and unchanged Standard Shopify Revamp purchase form. The Questionnaire Builder and complete Custom Shopify Theme intake are Phase 2.3 work; Custom Website Build intake is Phase 2.4 work.
+
+Live deployment record: the migration was applied successfully on MariaDB 10.11. `products.intake_type` and `product_live_examples` were verified, and Product ID 1 was classified as `shopify_revamp_standard`. Public page smoke checks returned HTTP 200, and unauthenticated `admin/products.php` correctly redirected to admin login.

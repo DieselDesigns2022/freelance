@@ -157,6 +157,7 @@ CREATE TABLE IF NOT EXISTS products (
   short_description TEXT NOT NULL,
   full_description MEDIUMTEXT NULL,
   service_type VARCHAR(50) NOT NULL,
+  intake_type VARCHAR(100) NOT NULL DEFAULT 'general_service',
   fulfillment_type VARCHAR(50) NOT NULL DEFAULT 'service',
   price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   deposit_amount DECIMAL(10,2) NULL,
@@ -167,6 +168,8 @@ CREATE TABLE IF NOT EXISTS products (
   is_featured TINYINT(1) NOT NULL DEFAULT 0,
   sort_order INT NOT NULL DEFAULT 0,
   contract_template_id INT NULL,
+  demo_url VARCHAR(500) NULL,
+  demo_password VARCHAR(255) NULL,
   created_at DATETIME NOT NULL,
   updated_at DATETIME NULL,
   INDEX idx_products_public (status, sort_order),
@@ -175,6 +178,29 @@ CREATE TABLE IF NOT EXISTS products (
   CONSTRAINT chk_products_fulfillment_type CHECK (fulfillment_type IN ('service','digital_kit','hybrid')),
   CONSTRAINT chk_products_status CHECK (status IN ('draft','active','archived')),
   CONSTRAINT fk_products_contract_template FOREIGN KEY (contract_template_id) REFERENCES contract_templates(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS product_images (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  product_id INT NOT NULL,
+  image_path VARCHAR(500) NOT NULL,
+  alt_text VARCHAR(255) NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL,
+  INDEX idx_product_images_product (product_id),
+  INDEX idx_product_images_sort_order (sort_order),
+  CONSTRAINT fk_product_images_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS product_live_examples (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  product_id INT NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  url VARCHAR(500) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL,
+  INDEX idx_product_live_examples_product_order (product_id, sort_order, id),
+  CONSTRAINT fk_product_live_examples_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS orders (
@@ -192,6 +218,9 @@ CREATE TABLE IF NOT EXISTS orders (
   product_price_snapshot DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   service_type_snapshot VARCHAR(50) NOT NULL,
   product_snapshot_json JSON NULL,
+  intake_answers_json JSON NULL,
+  customer_ip VARCHAR(100) NULL,
+  customer_user_agent VARCHAR(500) NULL,
   order_status VARCHAR(50) NOT NULL DEFAULT 'pending_contract',
   payment_status VARCHAR(50) NOT NULL DEFAULT 'pending',
   contract_status VARCHAR(50) NOT NULL DEFAULT 'pending',
@@ -207,6 +236,19 @@ CREATE TABLE IF NOT EXISTS orders (
   CONSTRAINT chk_orders_order_status CHECK (order_status IN ('pending_contract','contract_sent','contract_signed','payment_pending','paid','in_progress','completed','cancelled')),
   CONSTRAINT chk_orders_payment_status CHECK (payment_status IN ('not_required','pending','paid','refunded','failed')),
   CONSTRAINT chk_orders_contract_status CHECK (contract_status IN ('pending','sent','viewed','signed','void'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS order_uploads (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  order_id INT NOT NULL,
+  file_path VARCHAR(500) NOT NULL,
+  original_name VARCHAR(255) NULL,
+  mime_type VARCHAR(100) NULL,
+  file_size INT NULL,
+  upload_type VARCHAR(50) DEFAULT 'intake_asset',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_order_uploads_order (order_id),
+  CONSTRAINT fk_order_uploads_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS contract_instances (
@@ -226,6 +268,9 @@ CREATE TABLE IF NOT EXISTS contract_instances (
   typed_signature VARCHAR(190) NULL,
   signer_ip VARCHAR(100) NULL,
   signer_user_agent VARCHAR(500) NULL,
+  terms_agreed_at DATETIME NULL,
+  esign_agreed_at DATETIME NULL,
+  signed_contract_hash CHAR(64) NULL,
   created_at DATETIME NOT NULL,
   updated_at DATETIME NULL,
   INDEX idx_contract_instances_order (order_id),

@@ -13,7 +13,7 @@ $errors = [];
 function load_order(int $id): ?array
 {
     $stmt = db()->prepare(
-        'SELECT o.*, ci.id AS contract_id, ci.contract_title_snapshot, ci.contract_version_snapshot, ci.status AS ci_status, ci.sent_at, ci.viewed_at, ci.signed_at, ci.signer_legal_name, ci.typed_signature, ci.signer_ip, ci.signer_user_agent '
+        'SELECT o.*, ci.id AS contract_id, ci.contract_title_snapshot, ci.contract_version_snapshot, ci.status AS ci_status, ci.sent_at, ci.viewed_at, ci.signed_at, ci.signer_legal_name, ci.typed_signature, ci.signer_ip, ci.signer_user_agent, ci.terms_agreed_at, ci.esign_agreed_at, ci.signed_contract_hash '
         . 'FROM orders o LEFT JOIN contract_instances ci ON ci.order_id = o.id WHERE o.id = ?'
     );
     $stmt->execute([$id]);
@@ -26,6 +26,13 @@ $order = load_order($id);
 if (!$order) {
     http_response_code(404);
     exit('Not found');
+}
+
+$orderUploads = [];
+if (table_exists(db(), 'order_uploads')) {
+    $uploadStmt = db()->prepare('SELECT * FROM order_uploads WHERE order_id = ? ORDER BY upload_type, id');
+    $uploadStmt->execute([$id]);
+    $orderUploads = $uploadStmt->fetchAll();
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -128,12 +135,44 @@ include __DIR__ . '/includes/admin-header.php';
     <p>
         <?= e($order['customer_name']) ?> · <?= e($order['customer_email']) ?><br>
         <?= e($order['business_name'] ?? '') ?> <?= e($order['phone'] ?? '') ?><br>
-        <?= e($order['website_url'] ?? '') ?>
+        <?php if ($order['website_url']): ?><a href="<?= e($order['website_url']) ?>" target="_blank" rel="noopener"><?= e($order['website_url']) ?></a><?php endif; ?>
     </p>
 
     <h2>Product Snapshot</h2>
     <p><?= e($order['product_name_snapshot']) ?> — <?= e(money_format_dd($order['product_price_snapshot'])) ?> (<?= e(service_type_label($order['service_type_snapshot'])) ?>)</p>
     <p><?= nl2br(e($order['project_notes'] ?? '')) ?></p>
+
+    <?php $intakeAnswers = $order['intake_answers_json'] ? json_decode($order['intake_answers_json'], true) : []; ?>
+    <?php if (is_array($intakeAnswers) && $intakeAnswers): ?>
+        <h2>Shopify Revamp Intake</h2>
+        <dl>
+            <?php foreach ($intakeAnswers as $key => $value): if (trim((string) $value) === '') continue; ?>
+                <dt><?= e(ucwords(str_replace('_', ' ', $key))) ?></dt>
+                <dd><?= nl2br(e((string) $value)) ?></dd>
+            <?php endforeach; ?>
+        </dl>
+    <?php endif; ?>
+
+    <?php if ($orderUploads): ?>
+        <h2>Uploaded Files</h2>
+        <div class="order-upload-list">
+            <?php foreach ($orderUploads as $upload): ?>
+                <article class="order-upload-card">
+                    <strong><?= e(ucfirst((string) $upload['upload_type'])) ?></strong><br>
+                    <a href="../<?= e($upload['file_path']) ?>" target="_blank" rel="noopener">
+                        <?= e($upload['original_name'] ?: basename((string) $upload['file_path'])) ?>
+                    </a>
+                    <br>
+                    <small>
+                        <?= e($upload['mime_type'] ?? '') ?>
+                        <?php if ($upload['file_size']): ?>
+                            · <?= e(number_format(((int) $upload['file_size']) / 1024, 1)) ?> KB
+                        <?php endif; ?>
+                    </small>
+                </article>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
 
     <h2>Contract</h2>
     <p><?= e($order['contract_title_snapshot'] ?? 'None') ?> v<?= e($order['contract_version_snapshot'] ?? '') ?> · Status: <?= e($order['ci_status'] ?? '') ?></p>
@@ -173,7 +212,10 @@ include __DIR__ . '/includes/admin-header.php';
                 <strong>Signed:</strong> <?= e($order['signed_at']) ?><br>
                 <strong>Legal name:</strong> <?= e($order['signer_legal_name']) ?><br>
                 <strong>Typed signature:</strong> <?= e($order['typed_signature']) ?><br>
-                <strong>IP/User agent:</strong> <?= e($order['signer_ip']) ?> / <?= e($order['signer_user_agent']) ?>
+                <strong>IP/User agent:</strong> <?= e($order['signer_ip']) ?> / <?= e($order['signer_user_agent']) ?><br>
+                <strong>Terms agreed:</strong> <?= e($order['terms_agreed_at']) ?><br>
+                <strong>E-sign consent:</strong> <?= e($order['esign_agreed_at']) ?><br>
+                <strong>Signed contract hash:</strong> <?= e($order['signed_contract_hash']) ?>
             </p>
         <?php endif; ?>
     <?php endif; ?>

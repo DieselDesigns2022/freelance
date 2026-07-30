@@ -54,6 +54,18 @@ Implemented: The shared `e()` helper uses `htmlspecialchars()` with `ENT_QUOTES`
 
 Implemented: Optional live website links must be blank or valid URLs with an `http` or `https` scheme. Non-web schemes such as `javascript:` and `ftp://` are rejected by admin create/edit validation.
 
+## Phase 2.2 Product Intake and Live Examples
+
+Implemented in code (database-backed browser security testing remains pending):
+
+- Product create/edit and live-example actions remain behind admin authentication and existing CSRF verification.
+- Submitted intake types use the strict four-value application allowlist.
+- Titles are required and limited to 255 characters; URLs are limited to 500 characters and must be valid `http` or `https` URLs.
+- Prepared statements are used. Updates and deletes are scoped by example ID and product ID to prevent cross-product manipulation.
+- Save/delete POST actions check that `product_live_examples` exists and show a migration-required error without querying the missing table.
+- Admin and public titles/URLs are escaped. Public links use `target="_blank"` with `rel="noopener noreferrer"`.
+- The public Live Examples section is suppressed when no examples exist.
+
 ## Upload Security
 
 Implemented:
@@ -109,7 +121,8 @@ Implemented:
 
 Not implemented:
 
-- No email sending is performed.
+- Website request submissions do not send email notifications.
+- Phase 2.1 order notifications are optional and use PHP `mail()` only when `ADMIN_ORDER_EMAIL` or `ORDER_NOTIFY_EMAIL` is configured; order creation must not depend on mail delivery.
 - No CAPTCHA or paid spam-protection service is used.
 
 ## Phase 2 Storefront and Contract Security
@@ -130,3 +143,9 @@ Not implemented:
 - Regenerating a signing link updates the stored token hash, so old raw links become invalid immediately.
 - `signed` contract status is produced only by the public signing flow after the signer completes required signature fields and confirmations.
 - Signed contract HTML downloads are available only when the contract instance status is `signed`.
+
+## Phase 2.1 Shopify Revamp security notes
+Product screenshots reuse the hardened `uploads/portfolio/` path and are validated by extension, MIME type, maximum 10MB size, randomized filenames, and constrained deletion. The Shopify Revamp intake form explicitly tells customers not to enter Shopify admin passwords. Signing remains token-hash based and noindexed; signed copies display legal name, typed signature, signed timestamp, IP address, user agent, terms/e-sign consent timestamps, and a SHA-256 hash of stable signing evidence. Payment remains manual only.
+
+## Phase 2.1 corrective hardening
+Order creation now wraps order and contract-instance writes in an explicit transaction with rollback on failure and a generic public error message. Admin signed-contract copies distinguish pending, voided, signed, and unexpected contract states, and downloads are still emitted only for signed contracts.

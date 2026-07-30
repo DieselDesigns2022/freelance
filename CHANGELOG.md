@@ -1,5 +1,18 @@
 # Changelog
 
+## Phase 2.2 — Product Intake Types + Live Example Links
+
+- Added allowlisted product intake classifications to product create/edit workflows.
+- Added ordered product live examples with authenticated, CSRF-protected admin management and conditional public display.
+- Preserved product screenshots, the legacy demo URL/password, standard Shopify Revamp intake, contract signing, and manual payment behavior.
+- Added the additive `20260729_phase_2_2_product_intake_live_examples.sql` migration; it does not classify the production Shopify Revamp automatically, so verification and an exact ID or verified-slug update remain operational steps.
+- The reusable Questionnaire Builder and complete Custom Shopify Theme intake are planned for Phase 2.3; Custom Website Build intake is planned for Phase 2.4.
+- Live testing refined product display rules: premade Shopify Revamps use one demo URL/password, while custom Shopify kits and custom website builds use multiple live examples.
+- Reorganized the admin product form into Product Setup, Product Information, Live Demo, Live Examples, and Product Images sections for easier navigation.
+- Updated customer-facing service and intake labels to use the accurate Custom Shopify Theme terminology.
+- Routed Custom Shopify Theme products to Shopify Make-Overs instead of Website Builds.
+- Applied and verified the Phase 2.2 production migration on MariaDB 10.11, then classified the verified premade Shopify Revamp product as `shopify_revamp_standard`.
+
 ## Step 4 Bootstrap Documentation Cleanup - 2026-07-05
 
 ### Major Features Added
@@ -46,3 +59,10 @@
 - Added admin CRUD for products and contract templates plus order management, manual payment status controls, contract sent/viewed/signed tracking, token regeneration before signing, and signed-contract HTML downloads.
 - Added additive database tables for products, contract templates, orders, and contract instances.
 - Kept payment handling manual; no payment gateway or PDF dependency was added.
+
+## Phase 2.1 - Shopify Revamp Product Flow
+- Added additive database migration `database/migrations/20260710_phase_2_1_shopify_revamp_flow.sql` for product demo fields, product images, order intake metadata, customer IP/user agent, and contract signing audit hash/consent timestamps.
+- Simplified admin product setup for current service-product flow and added Shopify Revamp demo/image support.
+- Added Shopify Revamp-specific public intake questions with a clear warning not to enter Shopify admin passwords.
+- Contract signing remains token based and manual-payment only; no live payment gateway, PDF generation, or initials support was added.
+- Optional order notification uses PHP `mail()` only when `ADMIN_ORDER_EMAIL` or `ORDER_NOTIFY_EMAIL` is configured.

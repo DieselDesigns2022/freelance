@@ -21,7 +21,6 @@ $metaDescription = $metaDescription ?? 'Website builds, website revamps, Shopify
     <nav>
         <a href="index.php">Home</a>
         <a href="services.php">Services</a>
-        <a href="store.php">Store</a>
         <a href="portfolio.php">Portfolio</a>
         <a href="websites.php">Website Builds</a>
         <a href="shopify-makeovers.php">Shopify Make-Overs</a>

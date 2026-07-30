@@ -2,6 +2,39 @@
 
 The schema is defined in `database/portfolio_schema.sql`.
 
+## Phase 2.2 product intake and live examples
+
+`products.intake_type` is a `VARCHAR(100) NOT NULL DEFAULT 'general_service'` routing field. Supported application values are `shopify_revamp_standard`, `shopify_custom_kit`, `website_custom_build`, and `general_service`; VARCHAR storage permits later additions without an enum migration. Existing rows safely default to `general_service`. The repository does not seed or otherwise confirm the production standard Shopify Revamp product ID or slug, so the migration does not guess or automatically classify one.
+
+After applying the migration, Angela must first run this read-only verification query:
+
+```sql
+SELECT id, name, slug, service_type, intake_type
+FROM products
+WHERE service_type = 'shopify_makeover'
+ORDER BY id;
+```
+
+After confirming exactly which row is the existing standard Shopify Revamp, use an exact ID predicate (replace the placeholder with the verified numeric ID):
+
+```sql
+UPDATE products
+SET intake_type = 'shopify_revamp_standard'
+WHERE id = <verified_product_id>
+  AND service_type = 'shopify_makeover'
+  AND intake_type = 'general_service';
+```
+
+An exact verified slug may be used instead of the ID. Broadly updating every `shopify_makeover` row is unsafe because only verified premade Shopify Revamp products should receive `shopify_revamp_standard`.
+
+`product_live_examples` stores multiple public links per product. Its signed `INT product_id` exactly matches the signed `products.id`, is indexed with `sort_order` and `id`, and references `products(id) ON DELETE CASCADE`. Each row has a required title and URL plus display order and creation time. The admin edit page manages these rows; the public product detail renders them in `sort_order, id` order only when rows exist. The legacy `products.demo_url` and `demo_password` remain supported.
+
+Phase 2.2 follows the project's existing MariaDB-compatible additive migration conventions. Confirm database compatibility with `ADD COLUMN IF NOT EXISTS`, take a full backup, obtain approval, and run the production migration once. It has not yet been run in production:
+
+```bash
+mysql -u <user> -p diesel_portfolio < database/migrations/20260729_phase_2_2_product_intake_live_examples.sql
+```
+
 ## Table: `admin_users`
 
 ### Purpose
@@ -267,9 +300,19 @@ Allowed statuses are `draft` and `published`.
 
 ### products
 
-Stores purchasable services and kits shown on the public store when `status = active`. Key columns include `name`, unique `slug`, descriptions, `service_type`, `fulfillment_type`, `price`, optional `deposit_amount`, `turnaround_text`, `includes_text`, `requirements_text`, `is_featured`, `sort_order`, and nullable `contract_template_id`. Active products should point at an active contract template. Indexes support public listing and contract-template lookups.
+Stores purchasable services and kits shown on the public store when `status = active`. Key columns include `name`, unique `slug`, descriptions, `service_type`, `intake_type`, `fulfillment_type`, `price`, optional `deposit_amount`, `turnaround_text`, `includes_text`, `requirements_text`, `is_featured`, `sort_order`, nullable `contract_template_id`, optional `demo_url`, and optional `demo_password`. Active products should point at an active contract template. Indexes support public listing and contract-template lookups.
 
-Allowed service types: `website_kit`, `website_build`, `shopify_makeover`, `website_revamp`, `custom_service`. Allowed fulfillment types: `service`, `digital_kit`, `hybrid`. Allowed statuses: `draft`, `active`, `archived`.
+Allowed service types: `website_kit` (displayed as Custom Shopify Theme), `website_build`, `shopify_makeover`, `website_revamp`, `custom_service`. Allowed fulfillment types: `service`, `digital_kit`, `hybrid`. Allowed statuses: `draft`, `active`, `archived`.
+
+`intake_type` is `VARCHAR(100) NOT NULL DEFAULT 'general_service'`, not an enum. Application values are `shopify_revamp_standard`, `shopify_custom_kit` (displayed as Custom Shopify Theme), `website_custom_build`, and `general_service`.
+
+### product_images
+
+Stores screenshots/product images for storefront products. Key columns include `product_id`, `image_path`, optional `alt_text`, `sort_order`, and `created_at`. Image files use the existing hardened `uploads/portfolio/` path. The `product_id` foreign key references `products(id)` with `ON DELETE CASCADE`, so deleting a product cascades related `product_images` rows.
+
+### product_live_examples
+
+Stores public example links belonging to products. Required fields are `title VARCHAR(255)` and `url VARCHAR(500)`; `sort_order` defaults to zero. The signed `INT product_id` exactly matches signed `products.id` and references it with `ON DELETE CASCADE`. The composite index `idx_product_live_examples_product_order (product_id, sort_order, id)` supports display in `sort_order`, then `id` order.
 
 ### contract_templates
 
@@ -277,10 +320,13 @@ Stores reusable contract language by service type. Key columns include `title`, 
 
 ### orders
 
-Stores a customer's purchase/order request. Key columns include unique `order_number`, nullable `product_id`, customer contact fields, `website_url`, `project_notes`, product snapshot columns, `product_snapshot_json`, `order_status`, `payment_status`, `contract_status`, and `admin_notes`. Indexes support customer email and status filtering.
+Stores a customer's purchase/order request. Key columns include unique `order_number`, nullable `product_id`, customer contact fields, `website_url`, `project_notes`, product snapshot columns, `product_snapshot_json`, `intake_answers_json`, `customer_ip`, `customer_user_agent`, `order_status`, `payment_status`, `contract_status`, and `admin_notes`. Shopify Revamp orders store a readable intake summary in `project_notes`. Indexes support customer email and status filtering.
 
 Order statuses: `pending_contract`, `contract_sent`, `contract_signed`, `payment_pending`, `paid`, `in_progress`, `completed`, `cancelled`. Payment statuses: `not_required`, `pending`, `paid`, `refunded`, `failed`. Contract statuses: `pending`, `sent`, `viewed`, `signed`, `void`.
 
 ### contract_instances
 
-Stores one generated contract for an order. Key columns include `order_id`, nullable `contract_template_id`, title/version/body snapshots, `rendered_contract_snapshot`, unique `token_hash`, `status`, `sent_at`, `viewed_at`, `signed_at`, `signer_legal_name`, `typed_signature`, `signer_ip`, and `signer_user_agent`. Only the token hash is stored; raw tokens are not recoverable.
+Stores one generated contract for an order. Key columns include `order_id`, nullable `contract_template_id`, title/version/body snapshots, `rendered_contract_snapshot`, unique `token_hash`, `status`, `sent_at`, `viewed_at`, `signed_at`, `signer_legal_name`, `typed_signature`, `signer_ip`, `signer_user_agent`, `terms_agreed_at`, `esign_agreed_at`, and `signed_contract_hash`. Only the token hash is stored; raw tokens are not recoverable. The signed contract hash is generated at signing from stable signing evidence.
+
+## Phase 2.1 Shopify Revamp migration
+Existing deployments must run `database/migrations/20260710_phase_2_1_shopify_revamp_flow.sql`. The migration is additive for MariaDB 10.11: `products.demo_url`, `products.demo_password`, `product_images`, Shopify intake/customer audit columns on `orders`, and consent/hash fields on `contract_instances`.

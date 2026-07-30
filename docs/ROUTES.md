@@ -80,3 +80,20 @@ The app uses direct PHP files instead of a front controller.
 | GET/POST | `/admin/order-view.php?id=...` | Admin | Views order details, updates manual statuses, marks sent, voids unsigned contracts, and generates replacement signing links. |
 | GET | `/admin/contract-copy.php?id=...` | Admin | Views printable signed contract copy. |
 | GET | `/admin/contract-copy.php?id=...&download=1` | Admin | Downloads signed contract HTML only after signature. |
+
+## Phase 2.1 Shopify Revamp flow routes
+- `admin/products-create.php` and `admin/products-edit.php`: simplified product setup with demo URL/password and product image management on edit.
+- `product-service.php`: public product detail page with screenshots, demo link, optional demo password, and Order Now CTA.
+- `purchase.php`: Shopify Revamp intake form for `shopify_makeover` products plus the existing generic fallback for other service types.
+- `sign-contract.php`, `contract-copy.php`, and `admin/contract-copy.php`: token contract signing and signed-copy audit display. Payment remains manual; no payment gateway route exists.
+
+## Phase 2.2 product intake metadata and live examples
+
+- `admin/products-create.php`: saves an allowlisted product intake type; live examples become available after the base product has an ID.
+- `admin/products-edit.php?id=...`: updates the allowlisted intake type and adds, edits, changes display order, or deletes product-owned live example links with admin authentication and CSRF protection. No separate live-example handler route was added.
+- `shopify-makeovers.php`: displays active `shopify_makeover` and `website_kit` products so premade Shopify Revamps and Custom Shopify Themes appear in the same Shopify service category.
+- `websites.php`: displays active `website_build` and `website_revamp` products; Custom Shopify Themes are excluded from this page.
+- `product-service.php?slug=...`: preserves screenshots and the purchase CTA. `shopify_revamp_standard` products show the single demo URL/password, while `shopify_custom_kit` and `website_custom_build` products conditionally show ordered Live Examples.
+- `purchase.php?product=...`: unchanged in Phase 2.2. `intake_type` is stored for future routing but does not alter visible forms; standard Shopify Revamp continues to use `service_type = shopify_makeover`.
+
+The reusable Questionnaire Builder and complete Custom Shopify Theme intake are Phase 2.3 work. Custom Website Build intake is Phase 2.4 work.
