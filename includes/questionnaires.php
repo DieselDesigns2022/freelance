@@ -375,6 +375,26 @@ function load_questionnaire_rules(PDO $pdo, int $templateId, bool $activeOnly = 
     return $rules;
 }
 
+/** Persists one condition and all of its actions atomically. The caller must validate ownership first. */
+function questionnaire_save_rule(PDO $pdo, int $templateId, int $sourceFieldId, string $operator, mixed $comparison, array $actions): int
+{
+    if (!$actions) throw new InvalidArgumentException('A conditional rule requires at least one action.');
+    $started = !$pdo->inTransaction();
+    if ($started) $pdo->beginTransaction();
+    try {
+        $insertRule=$pdo->prepare('INSERT INTO questionnaire_field_rules(questionnaire_template_id,source_field_id,operator,comparison_value_json,stable_key,created_at,updated_at) VALUES(?,?,?,?,?,NOW(),NOW())');
+        $insertRule->execute([$templateId,$sourceFieldId,$operator,json_encode($comparison,JSON_THROW_ON_ERROR),'rule_'.bin2hex(random_bytes(8))]);
+        $ruleId=(int)$pdo->lastInsertId();
+        $insertAction=$pdo->prepare('INSERT INTO questionnaire_rule_actions(rule_id,action_type,target_field_id,fee_name,fee_cents,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?,NOW(),NOW())');
+        foreach(array_values($actions) as $index=>$action)$insertAction->execute([$ruleId,$action['action_type'],$action['target_field_id']??null,$action['fee_name']??null,$action['fee_cents']??null,($index+1)*10]);
+        if($started)$pdo->commit();
+        return $ruleId;
+    } catch(Throwable $exception) {
+        if($started&&$pdo->inTransaction())$pdo->rollBack();
+        throw $exception;
+    }
+}
+
 function load_product_questionnaire(PDO $pdo, array $product, bool $activeOnly = true): ?array
 {
     if (!questionnaire_tables_ready($pdo) || empty($product['questionnaire_template_id'])) {

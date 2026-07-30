@@ -102,6 +102,19 @@ assert($copied['validation']['unit_price_cents']===5000 && $copied['field_type']
 $copiedRules=load_questionnaire_rules($pdo,4);assert(count($copiedRules)===1 && (int)$copiedRules[0]['actions'][0]['fee_cents']===250, 'Import must remap complete owned rules and preserve fee cents.');
 
 
+$pdo->exec("INSERT INTO questionnaire_fields(questionnaire_template_id,field_key,field_type,label,is_required,is_active,sort_order) VALUES(3,'copy_target','file','Copy target',0,1,20)");
+$copyTargetId=(int)$pdo->lastInsertId();
+$multiRuleId=questionnaire_save_rule($pdo,3,$sourceId,'is_selected',null,[
+ ['action_type'=>'fee','target_field_id'=>null,'fee_name'=>'Logo creation','fee_cents'=>4000],
+ ['action_type'=>'hide','target_field_id'=>$copyTargetId,'fee_name'=>null,'fee_cents'=>null],
+ ['action_type'=>'optional','target_field_id'=>$copyTargetId,'fee_name'=>null,'fee_cents'=>null],
+]);
+$multiRules=load_questionnaire_rules($pdo,3);
+$loadedMultiRule=array_values(array_filter($multiRules,static fn(array $rule):bool=>(int)$rule['id']===$multiRuleId))[0];
+assert(count($loadedMultiRule['actions'])===3, 'One saved condition must load every transactionally saved action.');
+assert(array_column($loadedMultiRule['actions'],'action_type')===['fee','hide','optional']);
+
+
 
 assert(questionnaire_format_cents(200) === '$2.00');
 assert(questionnaire_format_cents(1250) === '$12.50');
@@ -203,13 +216,15 @@ $conditionalFields = [
  ['id'=>104,'field_key'=>'choices','field_type'=>'checkboxes','label'=>'Choices','is_required'=>0,'is_active'=>1,'options'=>['A','B'],'validation'=>[],'sort_order'=>40],
  ['id'=>105,'field_key'=>'quantity','field_type'=>'number','label'=>'Quantity','is_required'=>0,'is_active'=>1,'options'=>[],'validation'=>[],'sort_order'=>50],
  ['id'=>106,'field_key'=>'launch','field_type'=>'date','label'=>'Launch','is_required'=>0,'is_active'=>1,'options'=>[],'validation'=>[],'sort_order'=>60],
+ ['id'=>107,'field_key'=>'logo_heading','field_type'=>'section_heading','label'=>'Logo files','is_required'=>0,'is_active'=>1,'options'=>[],'validation'=>[],'sort_order'=>70],
+ ['id'=>108,'field_key'=>'logo_information','field_type'=>'information','label'=>'Upload current assets','is_required'=>0,'is_active'=>1,'options'=>[],'validation'=>[],'sort_order'=>80],
 ];
 $conditionalRules = [
  ['id'=>1,'stable_key'=>'banner_yes','source_field_key'=>'wants_banner','operator'=>'equals','comparison_value'=>'yes','actions'=>[
   ['id'=>1,'action_type'=>'show','target_field_key'=>'banner_text','sort_order'=>10],['id'=>2,'action_type'=>'required','target_field_key'=>'banner_text','sort_order'=>20],['id'=>3,'action_type'=>'fee','fee_name'=>'Custom logo','fee_cents'=>4000,'sort_order'=>30],
  ]],
  ['id'=>2,'stable_key'=>'banner_no','source_field_key'=>'wants_banner','operator'=>'equals','comparison_value'=>'no','actions'=>[
-  ['id'=>4,'action_type'=>'show','target_field_key'=>'logo','sort_order'=>10],['id'=>5,'action_type'=>'required','target_field_key'=>'logo','sort_order'=>20],
+  ['id'=>4,'action_type'=>'show','target_field_key'=>'logo','sort_order'=>10],['id'=>5,'action_type'=>'required','target_field_key'=>'logo','sort_order'=>20],['id'=>9,'action_type'=>'show','target_field_key'=>'logo_heading','sort_order'=>30],['id'=>10,'action_type'=>'show','target_field_key'=>'logo_information','sort_order'=>40],
  ]],
 ];
 $conditionalTemplate=['title'=>'Conditional','fields'=>$conditionalFields,'rules'=>$conditionalRules];
@@ -219,6 +234,8 @@ assert(!$yesState['visibility']['logo'] && $yesState['conditional_fee_total_cent
 $noState=questionnaire_evaluate_rules($conditionalTemplate,['wants_banner'=>'no']);
 assert(!$noState['visibility']['banner_text'] && !$noState['required']['banner_text']);
 assert($noState['visibility']['logo'] && $noState['required']['logo'] && $noState['conditional_fee_total_cents']===0);
+assert($noState['visibility']['logo_heading'] && $noState['visibility']['logo_information'], 'Structural fields must respond to Show actions.');
+assert(!questionnaire_evaluate_rules($conditionalTemplate,['wants_banner'=>'yes'])['visibility']['logo_heading']);
 [$hiddenErrors,$hiddenAnswers,, $hiddenState]=validate_questionnaire_submission($conditionalTemplate,['q'=>['wants_banner'=>'no','banner_text'=>['forged']]],[]);
 assert(!isset($hiddenAnswers['banner_text']) && $hiddenState['conditional_fee_total_cents']===0, 'Forged hidden answers and fee totals must be ignored.');
 assert(questionnaire_rule_matches($conditionalFields[3],'contains','A',['A']));
@@ -243,5 +260,13 @@ assert(questionnaire_rule_definition_errors($conditionalFields,[$cross])!==[]);
 $tmp=tempnam(sys_get_temp_dir(),'hidden-upload-');file_put_contents($tmp,'x');
 validate_questionnaire_submission($conditionalTemplate,['q'=>['wants_banner'=>'yes']],['q_logo'=>['name'=>'logo.png','type'=>'image/png','tmp_name'=>$tmp,'error'=>UPLOAD_ERR_OK,'size'=>1]]);
 assert(!is_file($tmp),'A hidden temporary upload must be cleaned up.');
+
+
+$purchaseSource=file_get_contents(__DIR__.'/../purchase.php');
+$previewSource=file_get_contents(__DIR__.'/../admin/questionnaires-preview.php');
+assert(str_contains($purchaseSource,'questionnaire_definition_errors($questionnaire[\'fields\'],$questionnaire[\'rules\']??[])'), 'Public validity must include rule validation.');
+assert(str_contains($purchaseSource,'data-required-indicator') && str_contains($purchaseSource,'input.disabled=true'), 'Public rendering must expose a live required indicator and disable hidden controls.');
+assert(str_contains($purchaseSource,'data-conditional-field') && str_contains($previewSource,'questionnaire-preview-structural'), 'Public and preview structural fields require conditional metadata.');
+assert(str_contains(file_get_contents(__DIR__.'/../admin/questionnaires-edit.php'),'data-add-rule-action') && str_contains(file_get_contents(__DIR__.'/../admin/questionnaires-edit.php'),'data-remove-rule-action'), 'The builder must render an action repeater.');
 
 echo "Questionnaire builder focused tests passed\n";
