@@ -102,7 +102,7 @@ function product_intake_type_labels(): array
 {
     return [
         'shopify_revamp_standard' => 'Standard Shopify Revamp',
-        'shopify_custom_kit' => 'Shopify Custom Design Kit',
+        'shopify_custom_kit' => 'Custom Shopify Theme',
         'website_custom_build' => 'Custom Website Build',
         'general_service' => 'General Service',
     ];
@@ -289,7 +289,7 @@ function money_format_dd($value): string
 function service_type_label(string $type): string
 {
     return [
-        'website_kit' => 'Website Kit',
+        'website_kit' => 'Custom Shopify Theme',
         'website_build' => 'Website Build',
         'shopify_makeover' => 'Shopify Make-Over',
         'website_revamp' => 'Website Revamp',

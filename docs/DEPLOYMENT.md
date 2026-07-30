@@ -211,7 +211,7 @@ WHERE slug = '<verified_exact_slug>'
   AND intake_type = 'general_service';
 ```
 
-Never broadly update every `shopify_makeover` product because future Custom Kit products may share that service type.
+Broadly updating every `shopify_makeover` product is unsafe because only verified premade Shopify Revamp products should receive `shopify_revamp_standard`.
 
 Post-migration verification:
 
@@ -220,6 +220,6 @@ SHOW COLUMNS FROM products LIKE 'intake_type';
 SHOW CREATE TABLE product_live_examples;
 ```
 
-Verify the correct standard product classification, admin create/edit intake selection, live-example add/edit/display-order/delete behavior, conditional public display, and unchanged standard Shopify purchase form. Shopify Custom Design Kit intake (future Phase 2.3) and Custom Website Build intake (future Phase 2.4) are not part of this deployment.
+Verify the correct standard product classification, admin create/edit intake selection, live-example add/edit/display-order/delete behavior, conditional public display, and unchanged Standard Shopify Revamp purchase form. The Questionnaire Builder and complete Custom Shopify Theme intake are Phase 2.3 work; Custom Website Build intake is Phase 2.4 work.
 
 Live deployment record: the migration was applied successfully on MariaDB 10.11. `products.intake_type` and `product_live_examples` were verified, and Product ID 1 was classified as `shopify_revamp_standard`. Public page smoke checks returned HTTP 200, and unauthenticated `admin/products.php` correctly redirected to admin login.

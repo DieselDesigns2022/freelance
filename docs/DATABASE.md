@@ -25,7 +25,7 @@ WHERE id = <verified_product_id>
   AND intake_type = 'general_service';
 ```
 
-An exact verified slug may be used instead of the ID. Never update every `shopify_makeover` row because future Custom Kit products may use the same service type.
+An exact verified slug may be used instead of the ID. Broadly updating every `shopify_makeover` row is unsafe because only verified premade Shopify Revamp products should receive `shopify_revamp_standard`.
 
 `product_live_examples` stores multiple public links per product. Its signed `INT product_id` exactly matches the signed `products.id`, is indexed with `sort_order` and `id`, and references `products(id) ON DELETE CASCADE`. Each row has a required title and URL plus display order and creation time. The admin edit page manages these rows; the public product detail renders them in `sort_order, id` order only when rows exist. The legacy `products.demo_url` and `demo_password` remain supported.
 
@@ -302,9 +302,9 @@ Allowed statuses are `draft` and `published`.
 
 Stores purchasable services and kits shown on the public store when `status = active`. Key columns include `name`, unique `slug`, descriptions, `service_type`, `intake_type`, `fulfillment_type`, `price`, optional `deposit_amount`, `turnaround_text`, `includes_text`, `requirements_text`, `is_featured`, `sort_order`, nullable `contract_template_id`, optional `demo_url`, and optional `demo_password`. Active products should point at an active contract template. Indexes support public listing and contract-template lookups.
 
-Allowed service types: `website_kit`, `website_build`, `shopify_makeover`, `website_revamp`, `custom_service`. Allowed fulfillment types: `service`, `digital_kit`, `hybrid`. Allowed statuses: `draft`, `active`, `archived`.
+Allowed service types: `website_kit` (displayed as Custom Shopify Theme), `website_build`, `shopify_makeover`, `website_revamp`, `custom_service`. Allowed fulfillment types: `service`, `digital_kit`, `hybrid`. Allowed statuses: `draft`, `active`, `archived`.
 
-`intake_type` is `VARCHAR(100) NOT NULL DEFAULT 'general_service'`, not an enum. Application values are `shopify_revamp_standard`, `shopify_custom_kit`, `website_custom_build`, and `general_service`.
+`intake_type` is `VARCHAR(100) NOT NULL DEFAULT 'general_service'`, not an enum. Application values are `shopify_revamp_standard`, `shopify_custom_kit` (displayed as Custom Shopify Theme), `website_custom_build`, and `general_service`.
 
 ### product_images
 

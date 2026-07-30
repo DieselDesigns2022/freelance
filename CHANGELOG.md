@@ -6,9 +6,11 @@
 - Added ordered product live examples with authenticated, CSRF-protected admin management and conditional public display.
 - Preserved product screenshots, the legacy demo URL/password, standard Shopify Revamp intake, contract signing, and manual payment behavior.
 - Added the additive `20260729_phase_2_2_product_intake_live_examples.sql` migration; it does not classify the production Shopify Revamp automatically, so verification and an exact ID or verified-slug update remain operational steps.
-- Phase 2.3 Custom Kit and Phase 2.4 Custom Website Build intake forms are not implemented.
+- The reusable Questionnaire Builder and complete Custom Shopify Theme intake are planned for Phase 2.3; Custom Website Build intake is planned for Phase 2.4.
 - Live testing refined product display rules: premade Shopify Revamps use one demo URL/password, while custom Shopify kits and custom website builds use multiple live examples.
 - Reorganized the admin product form into Product Setup, Product Information, Live Demo, Live Examples, and Product Images sections for easier navigation.
+- Updated customer-facing service and intake labels to use the accurate Custom Shopify Theme terminology.
+- Routed Custom Shopify Theme products to Shopify Make-Overs instead of Website Builds.
 - Applied and verified the Phase 2.2 production migration on MariaDB 10.11, then classified the verified premade Shopify Revamp product as `shopify_revamp_standard`.
 
 ## Step 4 Bootstrap Documentation Cleanup - 2026-07-05

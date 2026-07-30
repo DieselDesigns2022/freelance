@@ -14,7 +14,7 @@ $productStmt = db()->prepare(
          ORDER BY sort_order, id
          LIMIT 1
      )
-     WHERE p.status = 'active' AND p.service_type IN ('website_build','website_revamp','website_kit')
+     WHERE p.status = 'active' AND p.service_type IN ('website_build', 'website_revamp')
      ORDER BY p.sort_order, p.name"
 );
 $productStmt->execute();

@@ -197,4 +197,4 @@ WHERE service_type = 'shopify_makeover'
 ORDER BY id;
 ```
 
-After verifying the correct record, update only its exact ID or exact verified slug, retaining guards for `service_type = 'shopify_makeover'` and `intake_type = 'general_service'`. Never update all Shopify Make-Over rows; future Custom Kit products may share the service type. See `docs/DEPLOYMENT.md` for the guarded update.
+After verifying the correct record, update only its exact ID or exact verified slug, retaining guards for `service_type = 'shopify_makeover'` and `intake_type = 'general_service'`. Broadly updating all Shopify Make-Over rows is unsafe because only verified premade Shopify Revamp products should receive `shopify_revamp_standard`. See `docs/DEPLOYMENT.md` for the guarded update.

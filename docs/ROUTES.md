@@ -91,7 +91,9 @@ The app uses direct PHP files instead of a front controller.
 
 - `admin/products-create.php`: saves an allowlisted product intake type; live examples become available after the base product has an ID.
 - `admin/products-edit.php?id=...`: updates the allowlisted intake type and adds, edits, changes display order, or deletes product-owned live example links with admin authentication and CSRF protection. No separate live-example handler route was added.
+- `shopify-makeovers.php`: displays active `shopify_makeover` and `website_kit` products so premade Shopify Revamps and Custom Shopify Themes appear in the same Shopify service category.
+- `websites.php`: displays active `website_build` and `website_revamp` products; Custom Shopify Themes are excluded from this page.
 - `product-service.php?slug=...`: preserves screenshots and the purchase CTA. `shopify_revamp_standard` products show the single demo URL/password, while `shopify_custom_kit` and `website_custom_build` products conditionally show ordered Live Examples.
 - `purchase.php?product=...`: unchanged in Phase 2.2. `intake_type` is stored for future routing but does not alter visible forms; standard Shopify Revamp continues to use `service_type = shopify_makeover`.
 
-Shopify Custom Design Kit intake is future Phase 2.3 work. Custom Website Build intake is future Phase 2.4 work.
+The reusable Questionnaire Builder and complete Custom Shopify Theme intake are Phase 2.3 work. Custom Website Build intake is Phase 2.4 work.

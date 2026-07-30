@@ -122,9 +122,11 @@ Deployment is manual for now:
 
 No automated deployment is implemented.
 
-Phase 2.2 stores intake metadata for future routing but does not alter `purchase.php`: standard Shopify Revamp intake still follows `service_type = shopify_makeover`. Shopify Custom Design Kit intake is future Phase 2.3 work, and Custom Website Build intake is future Phase 2.4 work.
+Phase 2.2 stores intake metadata for future routing but does not alter `purchase.php`: Standard Shopify Revamp intake still follows `service_type = shopify_makeover`. The reusable Questionnaire Builder and complete Custom Shopify Theme intake are Phase 2.3 work, and Custom Website Build intake is Phase 2.4 work.
 
 The admin product form is organized into focused cards for setup, customer-facing information, demo/live-example settings, and images. Products using `shopify_revamp_standard` display the single demo URL/password controls. Products using `shopify_custom_kit` or `website_custom_build` display the multiple Live Examples manager instead.
+
+The stored `website_kit` service type is displayed as Custom Shopify Theme and is listed on `shopify-makeovers.php`. The stored `shopify_custom_kit` intake type is also displayed as Custom Shopify Theme. The reusable Questionnaire Builder and assigned-questionnaire workflow are Phase 2.3 work.
 
 ## Recovery Workflow
 

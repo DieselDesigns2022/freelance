@@ -3,7 +3,7 @@ require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/functions.php';
 
 $pageTitle = 'Shopify Make-Overs & Revamps | Diesel Designs';
-$metaDescription = 'Browse available Shopify revamp services and completed Shopify make-over portfolio work.';
+$metaDescription = 'Browse available Shopify revamps, custom Shopify themes, and completed Shopify portfolio work.';
 
 $productStmt = db()->prepare(
     "SELECT p.*, pi.image_path, pi.alt_text
@@ -14,7 +14,7 @@ $productStmt = db()->prepare(
          ORDER BY sort_order, id
          LIMIT 1
      )
-     WHERE p.status = 'active' AND p.service_type = 'shopify_makeover'
+     WHERE p.status = 'active' AND p.service_type IN ('shopify_makeover', 'website_kit')
      ORDER BY p.sort_order, p.name"
 );
 $productStmt->execute();
@@ -28,12 +28,12 @@ include __DIR__ . '/includes/header.php';
 ?>
 <section class="page-hero category-hero">
     <p class="eyebrow">Shopify Themes / Make-Overs</p>
-    <h1>Shopify Make-Overs</h1>
-    <p>Available Shopify revamps, theme refreshes, homepage glow-ups, color makeovers, graphics updates, and completed Shopify work all in one place.</p>
+    <h1>Shopify Make-Overs & Custom Themes</h1>
+    <p>Browse premade Shopify revamps, fully custom Shopify themes, and completed Shopify work all in one place.</p>
 </section>
 
 <section class="section category-block">
-    <h2>Available Shopify Revamps</h2>
+    <h2>Available Shopify Services</h2>
     <?php if ($products): ?>
         <div class="grid">
             <?php foreach ($products as $product): ?>
@@ -41,7 +41,7 @@ include __DIR__ . '/includes/header.php';
             <?php endforeach; ?>
         </div>
     <?php else: ?>
-        <div class="empty">No Shopify revamps are available for purchase right now.</div>
+        <div class="empty">No Shopify services are available for purchase right now.</div>
     <?php endif; ?>
 </section>
 
