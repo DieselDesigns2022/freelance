@@ -14,6 +14,8 @@ $pdo->exec(
     . 'is_active INTEGER NOT NULL, sort_order INTEGER NOT NULL, created_at TEXT, updated_at TEXT, '
     . 'UNIQUE(questionnaire_template_id, field_key))'
 );
+$pdo->exec('CREATE TABLE questionnaire_field_rules (id INTEGER PRIMARY KEY AUTOINCREMENT, questionnaire_template_id INTEGER NOT NULL, source_field_id INTEGER NOT NULL, operator TEXT NOT NULL, comparison_value_json TEXT, stable_key TEXT NOT NULL, created_at TEXT, updated_at TEXT)');
+$pdo->exec('CREATE TABLE questionnaire_rule_actions (id INTEGER PRIMARY KEY AUTOINCREMENT, rule_id INTEGER NOT NULL, action_type TEXT NOT NULL, target_field_id INTEGER, fee_name TEXT, fee_cents INTEGER, sort_order INTEGER, created_at TEXT, updated_at TEXT)');
 
 foreach (['A', 'I', '1'] as $label) {
     $key = questionnaire_unique_field_key($pdo, 1, $label);
@@ -91,9 +93,13 @@ assert(!questionnaire_snapshots_contain_field_key(['{}', '{malformed'], 'old_key
 
 $pdo->exec("INSERT INTO questionnaire_fields(questionnaire_template_id,field_key,field_type,label,validation_json,is_required,is_active,sort_order) VALUES(3,'addon_source','addon','Upgrade','{\"pricing_method\":\"flat_fee\",\"unit_price_cents\":5000,\"included_quantity\":0,\"min_quantity\":0,\"max_quantity\":1,\"quantity_step\":1}',0,1,10)");
 $sourceId=(int)$pdo->lastInsertId();
+$pdo->exec("INSERT INTO questionnaire_field_rules(questionnaire_template_id,source_field_id,operator,comparison_value_json,stable_key) VALUES(3,$sourceId,'is_selected','null','copy_fee')");
+$copyRuleId=(int)$pdo->lastInsertId();
+$pdo->exec("INSERT INTO questionnaire_rule_actions(rule_id,action_type,fee_name,fee_cents,sort_order) VALUES($copyRuleId,'fee','Copied fee',250,10)");
 assert(questionnaire_copy_fields($pdo,3,4,[$sourceId],0)===1);
 $copied=load_questionnaire_fields($pdo,4)[0];
 assert($copied['validation']['unit_price_cents']===5000 && $copied['field_type']==='addon', 'Import/copy must retain all add-on configuration.');
+$copiedRules=load_questionnaire_rules($pdo,4);assert(count($copiedRules)===1 && (int)$copiedRules[0]['actions'][0]['fee_cents']===250, 'Import must remap complete owned rules and preserve fee cents.');
 
 
 
@@ -188,5 +194,54 @@ assert($requiredMultiErrors !== []);
 );
 
 assert($unknownMultiErrors !== []);
+
+
+$conditionalFields = [
+ ['id'=>101,'field_key'=>'wants_banner','field_type'=>'yes_no','label'=>'Banner?','is_required'=>1,'is_active'=>1,'options'=>[],'validation'=>[],'sort_order'=>10],
+ ['id'=>102,'field_key'=>'banner_text','field_type'=>'multiple_inputs','label'=>'Banner text','is_required'=>1,'is_active'=>1,'options'=>[],'validation'=>['input_count'=>4],'sort_order'=>20,'base_visible'=>false],
+ ['id'=>103,'field_key'=>'logo','field_type'=>'file','label'=>'Current logo','is_required'=>0,'is_active'=>1,'options'=>[],'validation'=>['max_file_count'=>1,'allowed_extensions'=>['png'],'max_file_size'=>10000],'sort_order'=>30,'base_visible'=>false],
+ ['id'=>104,'field_key'=>'choices','field_type'=>'checkboxes','label'=>'Choices','is_required'=>0,'is_active'=>1,'options'=>['A','B'],'validation'=>[],'sort_order'=>40],
+ ['id'=>105,'field_key'=>'quantity','field_type'=>'number','label'=>'Quantity','is_required'=>0,'is_active'=>1,'options'=>[],'validation'=>[],'sort_order'=>50],
+ ['id'=>106,'field_key'=>'launch','field_type'=>'date','label'=>'Launch','is_required'=>0,'is_active'=>1,'options'=>[],'validation'=>[],'sort_order'=>60],
+];
+$conditionalRules = [
+ ['id'=>1,'stable_key'=>'banner_yes','source_field_key'=>'wants_banner','operator'=>'equals','comparison_value'=>'yes','actions'=>[
+  ['id'=>1,'action_type'=>'show','target_field_key'=>'banner_text','sort_order'=>10],['id'=>2,'action_type'=>'required','target_field_key'=>'banner_text','sort_order'=>20],['id'=>3,'action_type'=>'fee','fee_name'=>'Custom logo','fee_cents'=>4000,'sort_order'=>30],
+ ]],
+ ['id'=>2,'stable_key'=>'banner_no','source_field_key'=>'wants_banner','operator'=>'equals','comparison_value'=>'no','actions'=>[
+  ['id'=>4,'action_type'=>'show','target_field_key'=>'logo','sort_order'=>10],['id'=>5,'action_type'=>'required','target_field_key'=>'logo','sort_order'=>20],
+ ]],
+];
+$conditionalTemplate=['title'=>'Conditional','fields'=>$conditionalFields,'rules'=>$conditionalRules];
+$yesState=questionnaire_evaluate_rules($conditionalTemplate,['wants_banner'=>'yes']);
+assert($yesState['visibility']['banner_text'] && $yesState['required']['banner_text']);
+assert(!$yesState['visibility']['logo'] && $yesState['conditional_fee_total_cents']===4000 && count($yesState['fees'])===1);
+$noState=questionnaire_evaluate_rules($conditionalTemplate,['wants_banner'=>'no']);
+assert(!$noState['visibility']['banner_text'] && !$noState['required']['banner_text']);
+assert($noState['visibility']['logo'] && $noState['required']['logo'] && $noState['conditional_fee_total_cents']===0);
+[$hiddenErrors,$hiddenAnswers,, $hiddenState]=validate_questionnaire_submission($conditionalTemplate,['q'=>['wants_banner'=>'no','banner_text'=>['forged']]],[]);
+assert(!isset($hiddenAnswers['banner_text']) && $hiddenState['conditional_fee_total_cents']===0, 'Forged hidden answers and fee totals must be ignored.');
+assert(questionnaire_rule_matches($conditionalFields[3],'contains','A',['A']));
+assert(questionnaire_rule_matches($conditionalFields[3],'not_contains','B',['A']));
+assert(questionnaire_rule_matches($conditionalFields[4],'greater_or_equal','10','10'));
+assert(questionnaire_rule_matches($conditionalFields[4],'less_than','11','10'));
+assert(questionnaire_rule_matches($conditionalFields[5],'before','2027-01-01','2026-12-31'));
+assert(questionnaire_rule_matches($conditionalFields[5],'on_or_after','2026-12-31','2026-12-31'));
+assert(questionnaire_rule_matches($conditionalFields[0],'is_blank',null,''));
+assert(questionnaire_rule_matches($conditionalFields[0],'is_answered',null,'yes'));
+$precedence=$conditionalTemplate;$precedence['rules'][]=['id'=>3,'stable_key'=>'precedence','source_field_key'=>'wants_banner','operator'=>'equals','comparison_value'=>'yes','actions'=>[['id'=>6,'action_type'=>'hide','target_field_key'=>'banner_text'],['id'=>7,'action_type'=>'optional','target_field_key'=>'banner_text'],['id'=>8,'action_type'=>'fee','fee_name'=>'Second fee','fee_cents'=>500]]];
+$precedenceState=questionnaire_evaluate_rules($precedence,['wants_banner'=>'yes']);
+assert(!$precedenceState['visibility']['banner_text'] && !$precedenceState['required']['banner_text']);
+assert($precedenceState['conditional_fee_total_cents']===4500 && count($precedenceState['fees'])===2);
+assert(questionnaire_evaluate_rules($precedence,['wants_banner'=>'no'])['conditional_fee_total_cents']===0);
+assert(questionnaire_snapshot($conditionalTemplate)['rules'][0]['stable_key']==='banner_yes');
+assert(questionnaire_evaluate_rules(['fields'=>$conditionalFields],[])['fees']===[], 'Historical snapshots without rules stay compatible.');
+$circular=[['source_field_key'=>'wants_banner','operator'=>'equals','comparison_value'=>'yes','actions'=>[['action_type'=>'show','target_field_key'=>'banner_text']]],['source_field_key'=>'banner_text','operator'=>'is_answered','comparison_value'=>null,'actions'=>[['action_type'=>'show','target_field_key'=>'wants_banner']]]];
+assert(questionnaire_rule_definition_errors($conditionalFields,$circular)!==[]);
+$cross=$circular[0];$cross['actions'][0]['target_field_key']='external';
+assert(questionnaire_rule_definition_errors($conditionalFields,[$cross])!==[]);
+$tmp=tempnam(sys_get_temp_dir(),'hidden-upload-');file_put_contents($tmp,'x');
+validate_questionnaire_submission($conditionalTemplate,['q'=>['wants_banner'=>'yes']],['q_logo'=>['name'=>'logo.png','type'=>'image/png','tmp_name'=>$tmp,'error'=>UPLOAD_ERR_OK,'size'=>1]]);
+assert(!is_file($tmp),'A hidden temporary upload must be cleaned up.');
 
 echo "Questionnaire builder focused tests passed\n";

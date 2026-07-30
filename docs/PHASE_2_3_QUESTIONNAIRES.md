@@ -86,3 +86,7 @@ The base builder migration does not assign production product IDs. Its schema ch
 Static PHP syntax checks, `git diff --check`, focused questionnaire tests, deterministic dollar-to-cent cases, forged-total regression coverage, and static Admin Order rendering review are complete and recorded in `docs/TESTING.md`.
 
 Live MySQL migration verification, authenticated browser testing, builder visual testing, add/edit/import/copy/reorder interactions, public add-on rendering, JavaScript total updates, full order submission, immutable database snapshot verification, Admin **Manual Invoice Add-Ons** display, existing single/multiple file-upload regression, contract-signing regression, and mobile/accessibility review remain pending until deployment or an equivalent live environment. No live add-on testing has been recorded as passed.
+
+## Conditional logic and conditional pricing
+
+Phase 2.3 now stores field rules and their actions in normalized tables. Rules are included in immutable order snapshots and evaluated authoritatively on submission. Conditional visibility and required state use deterministic Hide and Optional precedence, while matched flat fees are deduplicated by stable rule/action keys and stored in integer cents. The builder and preview expose rule configuration and live feedback; historical snapshots without a `rules` member remain compatible.

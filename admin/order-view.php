@@ -175,6 +175,7 @@ include __DIR__ . '/includes/admin-header.php';
                 <?php continue; ?>
             <?php endif; ?>
             <?php $type = $field['field_type'] ?? ''; ?>
+            <?php if (!in_array($type, QUESTIONNAIRE_STRUCTURAL_TYPES, true) && !isset($questionnaireAnswers[$field['field_key'] ?? ''])) continue; ?>
             <?php if ($type === 'section_heading'): ?><h3><?= e($field['label'] ?? '') ?></h3>
             <?php elseif ($type === 'information'): ?><p class="notice"><?= nl2br(e($field['label'] ?? '')) ?></p>
             <?php elseif ($type === 'addon'): ?><dl><dt><?= e($field['label'] ?? '') ?></dt><dd>See Manual Invoice Add-Ons below.</dd></dl>
@@ -196,6 +197,8 @@ include __DIR__ . '/includes/admin-header.php';
             if (is_array($addon) && (int) ($addon['total_cents'] ?? 0) > 0) $savedAddons[] = $addon;
         }
         $savedAddonTotal = questionnaire_addon_total($savedAddons);
+        $conditionalFees = is_array($structure['conditional_fees'] ?? null) ? $structure['conditional_fees'] : [];
+        $conditionalTotal = (int) ($structure['total_conditional_fee_cents'] ?? 0);
         ?>
         <h2>Manual Invoice Add-Ons</h2>
         <?php if (!$savedAddons): ?><p>No paid add-ons selected.</p><?php else: ?>
@@ -214,6 +217,12 @@ include __DIR__ . '/includes/admin-header.php';
             <?php endforeach; ?>
             <p><strong>Total Additional Amount to Invoice: <?= e(questionnaire_format_cents($savedAddonTotal)) ?></strong></p>
         <?php endif; ?>
+        <h2>Conditional Fees</h2>
+        <?php if (!$conditionalFees): ?><p>No conditional fees were triggered.</p><?php else: ?>
+            <?php foreach ($conditionalFees as $fee): ?><dl><dt><?= e((string) ($fee['fee_name'] ?? 'Conditional fee')) ?></dt><dd><?= e(questionnaire_format_cents((int) ($fee['total_cents'] ?? 0))) ?><br><small>Triggered by <?= e((string) ($fee['source_field_key'] ?? 'question')) ?> (<?= e(str_replace('_', ' ', (string) ($fee['operator'] ?? ''))) ?>)</small></dd></dl><?php endforeach; ?>
+            <p><strong>Conditional fee total: <?= e(questionnaire_format_cents($conditionalTotal)) ?></strong></p>
+        <?php endif; ?>
+        <p><strong>Combined manual invoice add-on total: <?= e(questionnaire_format_cents($savedAddonTotal + $conditionalTotal)) ?></strong></p>
     <?php else: ?>
     <?php $intakeAnswers = $order['intake_answers_json'] ? json_decode($order['intake_answers_json'], true) : []; ?>
     <?php if (is_array($intakeAnswers) && $intakeAnswers): ?>
