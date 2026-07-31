@@ -1,8 +1,8 @@
 -- Phase 2.3: normalized questionnaire conditional rules and authoritative fee snapshots.
 CREATE TABLE IF NOT EXISTS questionnaire_field_rules (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  questionnaire_template_id BIGINT UNSIGNED NOT NULL,
-  source_field_id BIGINT UNSIGNED NOT NULL,
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  questionnaire_template_id INT NOT NULL,
+  source_field_id INT NOT NULL,
   operator VARCHAR(40) NOT NULL,
   comparison_value_json JSON NULL,
   stable_key VARCHAR(64) NOT NULL,
@@ -15,10 +15,10 @@ CREATE TABLE IF NOT EXISTS questionnaire_field_rules (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS questionnaire_rule_actions (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  rule_id BIGINT UNSIGNED NOT NULL,
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  rule_id INT NOT NULL,
   action_type ENUM('show','hide','required','optional','fee') NOT NULL,
-  target_field_id BIGINT UNSIGNED NULL,
+  target_field_id INT NULL,
   fee_name VARCHAR(180) NULL,
   fee_cents BIGINT UNSIGNED NULL,
   sort_order INT NOT NULL DEFAULT 10,
