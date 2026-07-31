@@ -1214,3 +1214,14 @@ button:disabled,
     white-space: nowrap !important;
     border: 0 !important;
 }
+
+/* Phase 2.3 conditional questionnaire rules */
+.questionnaire-conditional-logic { margin-block: 1.5rem; }
+.questionnaire-rule-editor { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:1rem; align-items:end; padding-top:1rem; border-top:1px solid var(--border, #ddd); }
+.questionnaire-rule-summary { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.8rem 0; border-bottom:1px solid var(--border, #ddd); }
+.questionnaire-rule-summary form { margin:0; }
+.questionnaire-rule-actions { grid-column:1 / -1; display:grid; gap:.75rem; }
+.questionnaire-rule-action { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:.75rem; align-items:end; padding:1rem; border:1px solid var(--border, #ddd); border-radius:10px; }
+.questionnaire-conditional-fees { margin-block:1.25rem; padding:1rem; border:1px solid var(--border, #ddd); border-radius:10px; background:var(--surface-alt, #faf8f5); }
+.questionnaire-conditional-fees p { margin:.35rem 0; }
+[hidden] { display:none !important; }

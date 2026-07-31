@@ -10,6 +10,95 @@ const QUESTIONNAIRE_STRUCTURAL_TYPES = ['information', 'section_heading'];
 const QUESTIONNAIRE_OPTION_TYPES = ['dropdown', 'radio', 'checkboxes'];
 const QUESTIONNAIRE_FILE_TYPES = ['file', 'multiple_files'];
 const QUESTIONNAIRE_ADDON_PRICING_METHODS = ['flat_fee', 'per_additional_item', 'quantity_priced'];
+const QUESTIONNAIRE_RULE_ACTIONS = ['show', 'hide', 'required', 'optional', 'fee'];
+
+function questionnaire_rule_operators(string $type): array
+{
+    $blank = ['is_answered', 'is_blank'];
+    return match ($type) {
+        'short_text', 'long_text', 'email', 'phone', 'url', 'yes_no', 'dropdown', 'radio' => ['equals', 'not_equals', ...$blank],
+        'checkboxes' => ['contains', 'not_contains', ...$blank],
+        'number' => ['equals', 'not_equals', 'greater_than', 'greater_or_equal', 'less_than', 'less_or_equal', ...$blank],
+        'date' => ['equals', 'before', 'on_or_before', 'after', 'on_or_after', ...$blank],
+        'file', 'multiple_files' => ['has_file', 'has_no_file'],
+        'multiple_inputs' => $blank,
+        'addon' => ['is_selected', 'is_not_selected', 'quantity_equals', 'quantity_greater_than', 'quantity_less_than'],
+        default => [],
+    };
+}
+
+function questionnaire_operator_needs_value(string $operator): bool
+{
+    return !in_array($operator, ['is_answered', 'is_blank', 'has_file', 'has_no_file', 'is_selected', 'is_not_selected'], true);
+}
+
+function questionnaire_answer_is_blank(mixed $answer): bool
+{
+    if (is_array($answer)) {
+        if (array_key_exists('selected_quantity', $answer)) return (int) $answer['selected_quantity'] === 0;
+        return count(array_filter($answer, static fn ($value): bool => trim((string) $value) !== '')) === 0;
+    }
+    return trim((string) $answer) === '';
+}
+
+/** Field-type-aware, allow-listed rule evaluation shared by public forms and previews. */
+function questionnaire_rule_matches(array $field, string $operator, mixed $comparison, mixed $answer): bool
+{
+    if (!in_array($operator, questionnaire_rule_operators((string) ($field['field_type'] ?? '')), true)) return false;
+    $blank = questionnaire_answer_is_blank($answer);
+    if ($operator === 'is_answered') return !$blank;
+    if ($operator === 'is_blank') return $blank;
+    if ($operator === 'has_file') return !$blank;
+    if ($operator === 'has_no_file') return $blank;
+    $quantity = is_array($answer) && isset($answer['selected_quantity']) ? (int) $answer['selected_quantity'] : (int) $answer;
+    if ($operator === 'is_selected') return $quantity > 0;
+    if ($operator === 'is_not_selected') return $quantity === 0;
+    if ($operator === 'contains') return is_array($answer) && in_array((string) $comparison, $answer, true);
+    if ($operator === 'not_contains') return !is_array($answer) || !in_array((string) $comparison, $answer, true);
+    if (str_starts_with($operator, 'quantity_')) { $left = $quantity; $right = (int) $comparison; }
+    elseif (($field['field_type'] ?? '') === 'number') { if (!is_numeric($answer) || !is_numeric($comparison)) return false; $left = (float) $answer; $right = (float) $comparison; }
+    else { $left = (string) $answer; $right = (string) $comparison; }
+    return match ($operator) {
+        'equals', 'quantity_equals' => $left === $right,
+        'not_equals' => $left !== $right,
+        'greater_than', 'after', 'quantity_greater_than' => $left > $right,
+        'greater_or_equal', 'on_or_after' => $left >= $right,
+        'less_than', 'before', 'quantity_less_than' => $left < $right,
+        'less_or_equal', 'on_or_before' => $left <= $right,
+        default => false,
+    };
+}
+
+function questionnaire_evaluate_rules(array $template, array $answers): array
+{
+    $shownTargets=[]; foreach($template['rules']??[] as $candidateRule)foreach($candidateRule['actions']??[] as $candidateAction)if(($candidateAction['action_type']??'')==='show')$shownTargets[(string)($candidateAction['target_field_key']??'')]=true;
+    $fields = [];
+    $visibility = [];
+    $required = [];
+    foreach ($template['fields'] ?? [] as $field) {
+        $key = (string) $field['field_key']; $fields[$key] = $field;
+        $visibility[$key] = isset($field['base_visible']) ? (bool) $field['base_visible'] : !isset($shownTargets[$key]);
+        $required[$key] = !empty($field['is_required']);
+    }
+    $effects = []; $fees = [];
+    foreach ($template['rules'] ?? [] as $rule) {
+        $source = (string) ($rule['source_field_key'] ?? '');
+        if (!isset($fields[$source]) || !questionnaire_rule_matches($fields[$source], (string) ($rule['operator'] ?? ''), $rule['comparison_value'] ?? null, $answers[$source] ?? null)) continue;
+        foreach ($rule['actions'] ?? [] as $action) {
+            $type = (string) ($action['action_type'] ?? ''); $target = (string) ($action['target_field_key'] ?? '');
+            if ($type === 'fee') {
+                $stable = (string) ($rule['stable_key'] ?? $rule['id'] ?? '') . ':' . (string) ($action['id'] ?? $action['sort_order'] ?? count($fees));
+                $fees[$stable] = ['rule_key'=>(string)($rule['stable_key']??$rule['id']??''), 'fee_name'=>(string)($action['fee_name']??''), 'unit_cents'=>(int)($action['fee_cents']??0), 'total_cents'=>(int)($action['fee_cents']??0), 'source_field_key'=>$source, 'operator'=>(string)$rule['operator'], 'comparison_value'=>$rule['comparison_value']??null];
+            } elseif (isset($fields[$target])) $effects[$target][$type] = true;
+        }
+    }
+    foreach ($effects as $key => $effect) {
+        if (!empty($effect['hide'])) $visibility[$key] = false; elseif (!empty($effect['show'])) $visibility[$key] = true;
+        if (!empty($effect['optional'])) $required[$key] = false; elseif (!empty($effect['required'])) $required[$key] = true;
+    }
+    foreach ($visibility as $key => $visible) if (!$visible) $required[$key] = false;
+    return ['visibility'=>$visibility, 'required'=>$required, 'fees'=>array_values($fees), 'conditional_fee_total_cents'=>array_sum(array_column($fees, 'total_cents'))];
+}
 
 function questionnaire_field_type_label(string $type): string
 {
@@ -182,16 +271,28 @@ function questionnaire_copy_fields(PDO $pdo, int $sourceId, int $destinationId, 
     $destination = load_questionnaire_fields($pdo, $destinationId);
     $insertIndex = max(0, min($insertIndex, count($destination)));
     $insert = $pdo->prepare('INSERT INTO questionnaire_fields (questionnaire_template_id, field_key, field_type, label, admin_label, help_text, placeholder, options_json, validation_json, is_required, is_active, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())');
-    $newIds = [];
+    $newIds = []; $idMap = [];
     foreach ($sourceFields as $field) {
         $key = questionnaire_unique_field_key($pdo, $destinationId, (string) $field['field_key']);
         $insert->execute([$destinationId, $key, $field['field_type'], $field['label'], $field['admin_label'], $field['help_text'], $field['placeholder'], $field['options_json'], $field['validation_json'], $field['is_required'], $field['is_active'], 0]);
-        $newIds[] = (int) $pdo->lastInsertId();
+        $newIds[] = (int) $pdo->lastInsertId(); $idMap[(int)$field['id']] = end($newIds);
     }
     $order = array_map(static fn (array $field): int => (int) $field['id'], $destination);
     array_splice($order, $insertIndex, 0, $newIds);
     if (!questionnaire_save_field_order($pdo, $destinationId, $order)) {
         throw new RuntimeException('The imported field order could not be saved.');
+    }
+    if (questionnaire_rule_tables_ready($pdo)) {
+        $rules=load_questionnaire_rules($pdo,$sourceId);
+        $insertRule=$pdo->prepare('INSERT INTO questionnaire_field_rules(questionnaire_template_id,source_field_id,operator,comparison_value_json,stable_key,created_at,updated_at) VALUES(?,?,?,?,?,NOW(),NOW())');
+        $insertAction=$pdo->prepare('INSERT INTO questionnaire_rule_actions(rule_id,action_type,target_field_id,fee_name,fee_cents,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?,NOW(),NOW())');
+        foreach ($rules as $rule) {
+            $oldSource=(int)$rule['source_field_id']; if (!isset($idMap[$oldSource])) continue;
+            $safe=true; foreach ($rule['actions'] as $action) { $target=(int)($action['target_field_id']??0); if ($target && $sourceId!==$destinationId && !isset($idMap[$target])) $safe=false; }
+            if (!$safe) continue;
+            $insertRule->execute([$destinationId,$idMap[$oldSource],$rule['operator'],$rule['comparison_value_json'],'rule_'.bin2hex(random_bytes(8))]); $newRule=(int)$pdo->lastInsertId();
+            foreach ($rule['actions'] as $action) { $target=(int)($action['target_field_id']??0); $newTarget=$target ? ($idMap[$target]??($sourceId===$destinationId?$target:null)) : null; $insertAction->execute([$newRule,$action['action_type'],$newTarget,$action['fee_name'],$action['fee_cents'],$action['sort_order']]); }
+        }
     }
     return count($newIds);
 }
@@ -252,6 +353,48 @@ function load_questionnaire_fields(PDO $pdo, int $templateId, bool $activeOnly =
     return array_map('decode_questionnaire_field', $stmt->fetchAll());
 }
 
+function questionnaire_rule_tables_ready(PDO $pdo): bool
+{
+    try { $pdo->query('SELECT 1 FROM questionnaire_field_rules WHERE 1 = 0'); $pdo->query('SELECT 1 FROM questionnaire_rule_actions WHERE 1 = 0'); return true; }
+    catch (Throwable) { return false; }
+}
+
+function load_questionnaire_rules(PDO $pdo, int $templateId, bool $activeOnly = false): array
+{
+    if (!questionnaire_rule_tables_ready($pdo)) return [];
+    $sql = 'SELECT r.*, sf.field_key source_field_key, sf.field_type source_field_type FROM questionnaire_field_rules r JOIN questionnaire_fields sf ON sf.id=r.source_field_id WHERE r.questionnaire_template_id=?';
+    if ($activeOnly) $sql .= ' AND sf.is_active=1';
+    $sql .= ' ORDER BY r.id';
+    $stmt=$pdo->prepare($sql); $stmt->execute([$templateId]); $rules=[];
+    $actionStmt=$pdo->prepare('SELECT a.*, tf.field_key target_field_key FROM questionnaire_rule_actions a LEFT JOIN questionnaire_fields tf ON tf.id=a.target_field_id WHERE a.rule_id=? ORDER BY a.sort_order,a.id');
+    foreach ($stmt->fetchAll() as $rule) {
+        $decoded=json_decode((string)($rule['comparison_value_json']??'null'),true);
+        $rule['comparison_value']=$decoded;
+        $actionStmt->execute([(int)$rule['id']]); $rule['actions']=$actionStmt->fetchAll(); $rules[]=$rule;
+    }
+    return $rules;
+}
+
+/** Persists one condition and all of its actions atomically. The caller must validate ownership first. */
+function questionnaire_save_rule(PDO $pdo, int $templateId, int $sourceFieldId, string $operator, mixed $comparison, array $actions): int
+{
+    if (!$actions) throw new InvalidArgumentException('A conditional rule requires at least one action.');
+    $started = !$pdo->inTransaction();
+    if ($started) $pdo->beginTransaction();
+    try {
+        $insertRule=$pdo->prepare('INSERT INTO questionnaire_field_rules(questionnaire_template_id,source_field_id,operator,comparison_value_json,stable_key,created_at,updated_at) VALUES(?,?,?,?,?,NOW(),NOW())');
+        $insertRule->execute([$templateId,$sourceFieldId,$operator,json_encode($comparison,JSON_THROW_ON_ERROR),'rule_'.bin2hex(random_bytes(8))]);
+        $ruleId=(int)$pdo->lastInsertId();
+        $insertAction=$pdo->prepare('INSERT INTO questionnaire_rule_actions(rule_id,action_type,target_field_id,fee_name,fee_cents,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?,NOW(),NOW())');
+        foreach(array_values($actions) as $index=>$action)$insertAction->execute([$ruleId,$action['action_type'],$action['target_field_id']??null,$action['fee_name']??null,$action['fee_cents']??null,($index+1)*10]);
+        if($started)$pdo->commit();
+        return $ruleId;
+    } catch(Throwable $exception) {
+        if($started&&$pdo->inTransaction())$pdo->rollBack();
+        throw $exception;
+    }
+}
+
 function load_product_questionnaire(PDO $pdo, array $product, bool $activeOnly = true): ?array
 {
     if (!questionnaire_tables_ready($pdo) || empty($product['questionnaire_template_id'])) {
@@ -272,6 +415,7 @@ function load_product_questionnaire(PDO $pdo, array $product, bool $activeOnly =
     }
 
     $template['fields'] = load_questionnaire_fields($pdo, (int) $template['id'], $activeOnly);
+    $template['rules'] = load_questionnaire_rules($pdo, (int) $template['id'], $activeOnly);
 
     return $template;
 }
@@ -281,7 +425,7 @@ function questionnaire_requires_assignment(string $intakeType): bool
     return in_array($intakeType, ['shopify_revamp_standard', 'shopify_custom_kit'], true);
 }
 
-function questionnaire_definition_errors(array $fields): array
+function questionnaire_definition_errors(array $fields, array $rules = []): array
 {
     $errors = [];
     $activeCount = 0;
@@ -361,6 +505,32 @@ function questionnaire_definition_errors(array $fields): array
         $errors[] = 'An active questionnaire must have at least one active answer field.';
     }
 
+    return array_values(array_unique(array_merge($errors, questionnaire_rule_definition_errors($fields, $rules))));
+}
+
+function questionnaire_rule_definition_errors(array $fields, array $rules): array
+{
+    $errors=[]; $byKey=[]; $byId=[]; $graph=[]; $equivalent=[];
+    foreach ($fields as $field) { $byKey[(string)$field['field_key']]=$field; if(isset($field['id']))$byId[(int)$field['id']]=$field; }
+    foreach ($rules as $rule) {
+        $sourceKey=(string)($rule['source_field_key']??''); $source=$byKey[$sourceKey]??($byId[(int)($rule['source_field_id']??0)]??null);
+        if (!$source || empty($source['is_active'])) { $errors[]='Conditional rules must reference an active source question.'; continue; }
+        $operator=(string)($rule['operator']??''); if(!in_array($operator,questionnaire_rule_operators((string)$source['field_type']),true))$errors[]='A conditional rule uses an invalid operator.';
+        $comparison=$rule['comparison_value']??null;
+        if(questionnaire_operator_needs_value($operator)) {
+            if(in_array($source['field_type'],['yes_no','dropdown','radio','checkboxes'],true)) { $options=$source['field_type']==='yes_no'?['yes','no']:($source['options']??[]); if(!in_array((string)$comparison,$options,true))$errors[]='A conditional rule uses an invalid comparison choice.'; }
+            if($source['field_type']==='number' && !is_numeric($comparison))$errors[]='A number condition requires a numeric comparison.';
+            if($source['field_type']==='date' && (!is_string($comparison)||!preg_match('/^\d{4}-\d{2}-\d{2}$/',$comparison)))$errors[]='A date condition requires a valid date.';
+        }
+        foreach($rule['actions']??[] as $action) {
+            $type=(string)($action['action_type']??''); if(!in_array($type,QUESTIONNAIRE_RULE_ACTIONS,true)){$errors[]='A conditional rule has an invalid action.';continue;}
+            $targetKey=(string)($action['target_field_key']??''); $target=$targetKey!==''?($byKey[$targetKey]??null):($byId[(int)($action['target_field_id']??0)]??null);
+            if($type==='fee'){if(trim((string)($action['fee_name']??''))===''||(filter_var($action['fee_cents']??null,FILTER_VALIDATE_INT)===false)||(int)$action['fee_cents']<0)$errors[]='Conditional fees require a name and non-negative integer cents.';}
+            else {if(!$target||empty($target['is_active'])){$errors[]='Conditional field actions must reference an active target in this questionnaire.';continue;} if((int)($target['id']??-1)===(int)($source['id']??-2)||$target['field_key']===$source['field_key'])$errors[]='A question cannot conditionally target itself.'; if(in_array($type,['required','optional'],true)&&in_array($target['field_type'],QUESTIONNAIRE_STRUCTURAL_TYPES,true))$errors[]='Structural fields cannot be conditionally required or optional.'; $graph[$source['field_key']][]=$target['field_key'];}
+            $signature=json_encode([$source['field_key'],$operator,$comparison,$type,$target['field_key']??null,$action['fee_name']??null,$action['fee_cents']??null]); if(isset($equivalent[$signature]))$errors[]='Duplicate equivalent conditional actions are not allowed.'; $equivalent[$signature]=true;
+        }
+    }
+    $visiting=[];$visited=[];$walk=function(string $node)use(&$walk,&$graph,&$visiting,&$visited,&$errors):void{if(isset($visiting[$node])){$errors[]='Circular conditional dependencies are not allowed.';return;}if(isset($visited[$node]))return;$visiting[$node]=true;foreach($graph[$node]??[]as$next)$walk($next);unset($visiting[$node]);$visited[$node]=true;}; foreach(array_keys($graph)as$node)$walk($node);
     return array_values(array_unique($errors));
 }
 
@@ -400,7 +570,7 @@ function validate_product_questionnaire_assignment(
     }
 
     $fields = load_questionnaire_fields($pdo, (int) $template['id'], true);
-    $definitionErrors = questionnaire_definition_errors($fields);
+    $definitionErrors = questionnaire_definition_errors($fields, load_questionnaire_rules($pdo, (int) $template['id'], true));
     if ($definitionErrors) {
         return ['The assigned questionnaire is incomplete or invalid: ' . $definitionErrors[0]];
     }
@@ -445,10 +615,24 @@ function validate_questionnaire_submission(array $template, array $posted, array
         $errors[] = 'The questionnaire answers are malformed.';
     }
 
+    $ruleAnswers=$postedAnswers;
+    foreach($template['fields']??[] as $ruleField){
+        $ruleKey=(string)$ruleField['field_key']; $ruleType=(string)$ruleField['field_type'];
+        if(in_array($ruleType,QUESTIONNAIRE_FILE_TYPES,true)) $ruleAnswers[$ruleKey]=array_values(array_filter(questionnaire_file_list($files,'q_'.$ruleKey),static fn(array $file):bool=>(int)($file['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_NO_FILE));
+        elseif($ruleType==='addon'){[, $calculated]=questionnaire_calculate_addon($ruleField,$postedAnswers[$ruleKey]??null);$ruleAnswers[$ruleKey]=$calculated;}
+    }
+    $ruleState=questionnaire_evaluate_rules($template,$ruleAnswers);
+
     foreach ($template['fields'] as $field) {
         $key = (string) $field['field_key'];
         $type = (string) $field['field_type'];
         $known[$key] = true;
+
+        if (empty($ruleState['visibility'][$key])) {
+            foreach(questionnaire_file_list($files,'q_'.$key) as $hiddenFile){$tmp=(string)($hiddenFile['tmp_name']??'');if($tmp!==''&&is_file($tmp))@unlink($tmp);}
+            continue;
+        }
+        $field['is_required'] = !empty($ruleState['required'][$key]);
 
         if (in_array($type, QUESTIONNAIRE_STRUCTURAL_TYPES, true)) {
             continue;
@@ -630,7 +814,7 @@ function validate_questionnaire_submission(array $template, array $posted, array
         }
     }
 
-    return [array_values(array_unique($errors)), $answers, $uploads];
+    return [array_values(array_unique($errors)), $answers, $uploads, $ruleState];
 }
 
 function questionnaire_snapshot(array $template): array
@@ -642,13 +826,15 @@ function questionnaire_snapshot(array $template): array
                 'field_key' => $field['field_key'],
                 'field_type' => $field['field_type'],
                 'label' => $field['label'],
-                'help_text' => $field['help_text'],
+                'help_text' => $field['help_text'] ?? null,
                 'is_required' => (bool) $field['is_required'],
+                'base_visible' => !isset($field['base_visible']) || (bool) $field['base_visible'],
                 'options' => $field['options'],
                 'validation' => $field['validation'],
                 'sort_order' => (int) $field['sort_order'],
             ],
             $template['fields']
         ),
+        'rules' => array_values($template['rules'] ?? []),
     ];
 }

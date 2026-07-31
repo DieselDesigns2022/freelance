@@ -9,15 +9,17 @@ $stmt->execute([$id]);
 $questionnaire = $stmt->fetch();
 if (!$questionnaire) { http_response_code(404); exit('Questionnaire not found.'); }
 $questionnaire['fields'] = load_questionnaire_fields(db(), $id, true);
+$questionnaire['rules'] = load_questionnaire_rules(db(), $id, true);
 $adminTitle = 'Preview Questionnaire';
 include __DIR__ . '/includes/admin-header.php';
 ?>
 <div class="admin-page-heading"><div><p class="eyebrow">Preview</p><h1><?= e($questionnaire['title']) ?></h1></div><a class="btn" href="questionnaires-edit.php?id=<?= $id ?>">Back to builder</a></div>
 <section class="admin-card questionnaire-preview">
 <?php foreach ($questionnaire['fields'] as $field): $type=$field['field_type']; ?>
+  <div data-conditional-field="<?= e((string) $field['field_key']) ?>" data-base-required="<?= !empty($field['is_required']) ? '1' : '0' ?>" class="<?= in_array($type, QUESTIONNAIRE_STRUCTURAL_TYPES, true) ? 'questionnaire-preview-structural' : 'questionnaire-preview-item' ?>">
   <?php if ($type === 'section_heading'): ?><h2><?= e($field['label']) ?></h2>
   <?php elseif ($type === 'information'): ?><p><?= nl2br(e($field['label'])) ?></p>
-  <?php else: ?><div class="questionnaire-preview-field"><strong><?= e($field['label']) ?><?= !empty($field['is_required']) ? ' *' : '' ?></strong><?php if ($field['help_text']): ?><small><?= e($field['help_text']) ?></small><?php endif; ?>
+  <?php else: ?><div class="questionnaire-preview-field"><strong><?= e($field['label']) ?><span data-required-indicator><?= !empty($field['is_required']) ? ' *' : '' ?></span></strong><?php if ($field['help_text']): ?><small><?= e($field['help_text']) ?></small><?php endif; ?>
   <?php if ($type === 'addon'): $config=questionnaire_addon_config($field); ?><div class="questionnaire-preview-input questionnaire-addon-preview"
     data-addon-preview
     data-method="<?= e($config['pricing_method']) ?>"
@@ -151,11 +153,20 @@ include __DIR__ . '/includes/admin-header.php';
         <?= e(questionnaire_field_type_label($type)) ?>
       <?php endif; ?>
     </div>
-  <?php endif; ?></div><?php endif; ?>
+  <?php endif; ?></div><?php endif; ?></div>
 <?php endforeach; ?>
 </section>
+<aside class="admin-card questionnaire-conditional-fees" data-conditional-fees><h2>Conditional fee preview</h2><div data-conditional-fee-lines></div><p>Current conditional total: <strong data-conditional-fee-total>$0.00</strong></p></aside>
+<script type="application/json" data-questionnaire-rules><?= json_encode($questionnaire['rules'], JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?></script>
 
 <script>
+(() => {
+const node=document.querySelector('[data-questionnaire-rules]'); const rules=JSON.parse(node?.textContent||'[]');
+const value=(key)=>{const inputs=[...document.querySelectorAll(`[name="preview[${CSS.escape(key)}]"],[name="preview[${CSS.escape(key)}][]"],[name^="preview[${CSS.escape(key)}]["]`)];if(!inputs.length){const file=document.querySelector(`[name="preview_${CSS.escape(key)}"],[name="preview_${CSS.escape(key)}[]"]`);return file?.files?[...file.files]:'';}if(inputs[0].type==='checkbox'&&inputs.length===1)return inputs[0].checked?'1':'0';if(inputs[0].type==='checkbox')return inputs.filter(i=>i.checked).map(i=>i.value);if(inputs[0].type==='radio')return inputs.find(i=>i.checked)?.value||'';return inputs.length>1?inputs.map(i=>i.value).filter(Boolean):inputs[0].value;};
+const blank=v=>Array.isArray(v)?v.length===0:String(v??'').trim()==='';
+const matches=(r,v)=>{const c=r.comparison_value,op=r.operator,n=Number(v),x=Number(c);if(op==='is_answered')return !blank(v);if(op==='is_blank'||op==='has_no_file')return blank(v);if(op==='has_file')return !blank(v);if(op==='contains')return v.includes(String(c));if(op==='not_contains')return !v.includes(String(c));if(op==='is_selected')return n>0;if(op==='is_not_selected')return n===0;if(['equals','quantity_equals'].includes(op))return String(v)===String(c);if(op==='not_equals')return String(v)!==String(c);if(['greater_than','after','quantity_greater_than'].includes(op))return isNaN(n)||isNaN(x)?String(v)>String(c):n>x;if(['greater_or_equal','on_or_after'].includes(op))return isNaN(n)||isNaN(x)?String(v)>=String(c):n>=x;if(['less_than','before','quantity_less_than'].includes(op))return isNaN(n)||isNaN(x)?String(v)<String(c):n<x;if(['less_or_equal','on_or_before'].includes(op))return isNaN(n)||isNaN(x)?String(v)<=String(c):n<=x;return false;};
+const shownTargets=new Set(rules.flatMap(r=>(r.actions||[]).filter(a=>a.action_type==='show').map(a=>a.target_field_key)));const update=()=>{const effects={},fees=new Map;rules.forEach(r=>{if(!matches(r,value(r.source_field_key)))return;(r.actions||[]).forEach(a=>a.action_type==='fee'?fees.set(`${r.stable_key||r.id}:${a.id||a.sort_order}`,a):(effects[a.target_field_key]??={})[a.action_type]=true)});document.querySelectorAll('[data-conditional-field]').forEach(field=>{const e=effects[field.dataset.conditionalField]||{},visible=e.hide?false:e.show?true:!shownTargets.has(field.dataset.conditionalField),required=e.optional?false:e.required?true:field.dataset.baseRequired==='1';field.hidden=!visible;const indicator=field.querySelector('[data-required-indicator]');if(indicator)indicator.textContent=required?' *':'';field.querySelectorAll('input,select,textarea').forEach(input=>{input.required=visible&&required;input.disabled=!visible;})});const list=document.querySelector('[data-conditional-fee-lines]');list.replaceChildren(...[...fees.values()].map(f=>{const p=document.createElement('p');p.textContent=`${f.fee_name} — ${new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(f.fee_cents)/100)}`;return p}));document.querySelector('[data-conditional-fee-total]').textContent=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format([...fees.values()].reduce((s,f)=>s+Number(f.fee_cents),0)/100);};document.addEventListener('input',update);document.addEventListener('change',update);update();
+})();
 document.querySelectorAll('[data-addon-preview]').forEach((box) => {
     const input = box.querySelector('[data-addon-preview-input]');
     const totalOutput = box.querySelector('[data-addon-preview-total]');

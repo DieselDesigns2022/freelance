@@ -78,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($status === 'active') {
             $errors = array_merge(
                 $errors,
-                questionnaire_definition_errors(load_questionnaire_fields(db(), $id))
+                questionnaire_definition_errors(load_questionnaire_fields(db(), $id), load_questionnaire_rules(db(), $id))
             );
         } else {
             $activeProductStmt = db()->prepare(
@@ -104,6 +104,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errors[] = 'A questionnaire with that title already exists.';
             }
         }
+    } elseif ($action === 'add_rule') {
+        $sourceId=(int)($_POST['source_field_id']??0); $operator=(string)($_POST['operator']??''); $comparison=trim((string)($_POST['comparison_value']??''));
+        $submittedActions=is_array($_POST['rule_actions']??null)?array_values($_POST['rule_actions']):[]; $savedActions=[];
+        foreach($submittedActions as $submittedAction){if(!is_array($submittedAction))continue;$actionType=(string)($submittedAction['action_type']??'');$targetId=(int)($submittedAction['target_field_id']??0);$feeName=trim((string)($submittedAction['fee_name']??''));$feeCents=questionnaire_dollars_to_cents((string)($submittedAction['fee_amount']??''));$savedActions[]=['action_type'=>$actionType,'target_field_id'=>$actionType==='fee'?null:($targetId?:null),'fee_name'=>$actionType==='fee'?$feeName:null,'fee_cents'=>$actionType==='fee'?$feeCents:null];}
+        $candidate=['source_field_id'=>$sourceId,'operator'=>$operator,'comparison_value'=>questionnaire_operator_needs_value($operator)?$comparison:null,'actions'=>$savedActions];
+        $sourceStmt=db()->prepare('SELECT * FROM questionnaire_fields WHERE id=? AND questionnaire_template_id=?');$sourceStmt->execute([$sourceId,$id]);$source=$sourceStmt->fetch();if($source)$candidate['source_field_key']=$source['field_key'];
+        $targetStmt=db()->prepare('SELECT * FROM questionnaire_fields WHERE id=? AND questionnaire_template_id=?');foreach($candidate['actions'] as &$candidateAction){if(!$candidateAction['target_field_id'])continue;$targetStmt->execute([$candidateAction['target_field_id'],$id]);$target=$targetStmt->fetch();if($target)$candidateAction['target_field_key']=$target['field_key'];}unset($candidateAction);
+        if(!$candidate['actions'])$errors[]='Add at least one conditional action.';
+        $ruleErrors=questionnaire_rule_definition_errors(load_questionnaire_fields(db(),$id),array_merge(load_questionnaire_rules(db(),$id),[$candidate]));
+        if($ruleErrors||$errors)$errors=array_merge($errors,$ruleErrors);else{try{questionnaire_save_rule(db(),$id,$sourceId,$operator,$candidate['comparison_value'],$savedActions);flash('success','Conditional rule added.');redirect('questionnaires-edit.php?id='.$id);}catch(Throwable $exception){$errors[]='The conditional rule could not be saved.';}}
+    } elseif ($action === 'delete_rule') {
+        $delete=db()->prepare('DELETE FROM questionnaire_field_rules WHERE id=? AND questionnaire_template_id=?');$delete->execute([(int)($_POST['rule_id']??0),$id]);flash('success','Conditional rule removed.');redirect('questionnaires-edit.php?id='.$id);
     } elseif ($action === 'reorder') {
         $orderedIds = array_values(array_filter(array_map('intval', explode(',', (string) ($_POST['field_order'] ?? '')))));
         $pdo = db();
@@ -211,41 +223,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($action === 'duplicate' && $existing) {
-            $baseKey = $existing['field_key'] . '_copy';
-            $key = $baseKey;
-            $suffix = 2;
-
-            while (true) {
-                $keyStmt = db()->prepare(
-                    'SELECT id FROM questionnaire_fields WHERE questionnaire_template_id = ? AND field_key = ?'
-                );
-                $keyStmt->execute([$id, $key]);
-                if (!$keyStmt->fetch()) {
-                    break;
-                }
-                $key = $baseKey . $suffix++;
-            }
-
-            $duplicateStmt = db()->prepare(
-                'INSERT INTO questionnaire_fields '
-                . '(questionnaire_template_id, field_key, field_type, label, admin_label, help_text, placeholder, '
-                . 'options_json, validation_json, is_required, is_active, sort_order, created_at, updated_at) '
-                . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())'
-            );
-            $duplicateStmt->execute([
-                $id,
-                $key,
-                $existing['field_type'],
-                'Copy of ' . $existing['label'],
-                $existing['admin_label'],
-                $existing['help_text'],
-                $existing['placeholder'],
-                $existing['options_json'],
-                $existing['validation_json'],
-                $existing['is_required'],
-                $existing['is_active'],
-                (int) $existing['sort_order'] + 1,
-            ]);
+            $allFields=load_questionnaire_fields(db(),$id); $position=0; foreach($allFields as $index=>$candidate)if((int)$candidate['id']===$fieldId)$position=$index+1;
+            questionnaire_copy_fields(db(),$id,$id,[$fieldId],$position);
             flash('success', 'Field duplicated.');
             redirect('questionnaires-edit.php?id=' . $id);
         }
@@ -453,6 +432,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $fields = load_questionnaire_fields(db(), $id);
+$conditionalRules = load_questionnaire_rules(db(), $id);
 $editId = (int) ($_GET['field'] ?? ($fieldValues['field_id'] ?? 0));
 $editing = null;
 foreach ($fields as $field) {
@@ -601,6 +581,27 @@ include __DIR__ . '/includes/admin-header.php';
 
     <?php foreach ($errors as $error): ?><p class="error-text"><?= e($error) ?></p><?php endforeach; ?>
 
+    <section class="admin-card questionnaire-conditional-logic">
+        <h2>Conditional Logic</h2>
+        <p class="helper">Base Required and Active settings remain on each question. Matching rules apply conditional visibility, required behavior, or server-calculated fees. Hide wins over Show; Optional wins over Required.</p>
+        <?php foreach ($conditionalRules as $rule): ?>
+            <div class="questionnaire-rule-summary"><span>When <strong><?= e((string) $rule['source_field_key']) ?></strong> <?= e(str_replace('_',' ',(string)$rule['operator'])) ?><?= questionnaire_operator_needs_value((string)$rule['operator']) ? ' “'.e((string)$rule['comparison_value']).'”' : '' ?>:<ul><?php foreach($rule['actions'] as $ruleAction):?><li><?= e(str_replace('_',' ',(string)$ruleAction['action_type'])) ?> <?= e((string)($ruleAction['target_field_key']??$ruleAction['fee_name']??'')) ?><?= $ruleAction['action_type']==='fee'?' ('.e(questionnaire_format_cents((int)$ruleAction['fee_cents'])).')':'' ?></li><?php endforeach;?></ul></span><form method="post"><?= csrf_field() ?><input type="hidden" name="action" value="delete_rule"><input type="hidden" name="rule_id" value="<?= (int)$rule['id'] ?>"><button class="btn btn-ghost btn-small">Remove rule</button></form></div>
+        <?php endforeach; ?>
+        <form method="post" class="admin-form questionnaire-rule-editor" data-rule-editor>
+            <?= csrf_field() ?><input type="hidden" name="action" value="add_rule">
+            <label>Source question<select name="source_field_id" required data-rule-source><option value="">Choose a question</option><?php foreach($fields as $sourceField):if(in_array($sourceField['field_type'],QUESTIONNAIRE_STRUCTURAL_TYPES,true)||empty($sourceField['is_active']))continue;?><option value="<?= (int)$sourceField['id'] ?>" data-type="<?= e($sourceField['field_type']) ?>" data-options="<?= e(json_encode($sourceField['field_type']==='yes_no'?['yes','no']:($sourceField['options']??[]))) ?>"><?= e($sourceField['label']) ?></option><?php endforeach;?></select></label>
+            <label>Condition<select name="operator" required data-rule-operator><option value="">Choose a source question first</option></select></label>
+            <label data-rule-comparison>Comparison value
+                <input name="comparison_value" list="rule-comparison-options">
+                <datalist id="rule-comparison-options" data-rule-options></datalist>
+            </label>
+            <div class="questionnaire-rule-actions" data-rule-actions></div>
+            <button class="btn btn-ghost" type="button" data-add-rule-action>Add action</button>
+            <button class="btn btn-accent">Save rule</button>
+        </form>
+        <template data-rule-action-template><div class="questionnaire-rule-action" data-rule-action-row><label>Action type<select data-action-type required><?php foreach(QUESTIONNAIRE_RULE_ACTIONS as $choice):?><option value="<?= e($choice) ?>"><?= e(match($choice){'show'=>'Show target field','hide'=>'Hide target field','required'=>'Make target required','optional'=>'Make target optional','fee'=>'Add a flat conditional fee'}) ?></option><?php endforeach;?></select></label><label data-action-target>Target question<select data-target-field><option value="">Choose a target</option><?php foreach($fields as $targetField):if(empty($targetField['is_active']))continue;?><option value="<?= (int)$targetField['id'] ?>" data-structural="<?= in_array($targetField['field_type'],QUESTIONNAIRE_STRUCTURAL_TYPES,true)?'1':'0' ?>"><?= e($targetField['label']) ?></option><?php endforeach;?></select></label><div data-action-fee hidden><label>Conditional fee name<input data-fee-name maxlength="180"></label><label>Fee amount in dollars<input data-fee-amount inputmode="decimal" placeholder="40.00"></label></div><button class="btn btn-ghost btn-small" type="button" data-remove-rule-action>Remove action</button></div></template>
+    </section>
+
     <form method="post" data-reorder-form id="questionnaire-reorder-form">
         <?= csrf_field() ?><input type="hidden" name="action" value="reorder"><input type="hidden" name="field_order" data-field-order>
     </form>
@@ -663,6 +664,17 @@ include __DIR__ . '/includes/admin-header.php';
  const data=JSON.parse(document.querySelector('[data-import-data]').textContent), source=document.querySelector('[data-import-source]'), holder=document.querySelector('[data-import-fields]');
  source.addEventListener('change',()=>{ const fields=data[source.value]||[]; holder.innerHTML=fields.length?'<label><input type="checkbox" data-select-all> Select all</label>'+fields.map(field=>`<label><input type="checkbox" name="import_field_ids[]" value="${Number(field.id)}"> ${escapeHtml(field.label)} <small>(${escapeHtml(field.field_type_label)})</small></label>`).join(''):'<p class="helper">This questionnaire has no fields.</p>'; holder.querySelector('[data-select-all]')?.addEventListener('change',event=>holder.querySelectorAll('[name="import_field_ids[]"]').forEach(box=>box.checked=event.target.checked)); });
  function escapeHtml(value){ const node=document.createElement('span'); node.textContent=String(value); return node.innerHTML; }
+ const ruleEditor=document.querySelector('[data-rule-editor]'); if(ruleEditor){
+  const source=ruleEditor.querySelector('[data-rule-source]'),operator=ruleEditor.querySelector('[data-rule-operator]'),comparison=ruleEditor.querySelector('[data-rule-comparison]'),options=ruleEditor.querySelector('[data-rule-options]'),actions=ruleEditor.querySelector('[data-rule-actions]'),template=document.querySelector('[data-rule-action-template]');
+  const operatorMap={short_text:['equals','not_equals','is_answered','is_blank'],long_text:['equals','not_equals','is_answered','is_blank'],email:['equals','not_equals','is_answered','is_blank'],phone:['equals','not_equals','is_answered','is_blank'],url:['equals','not_equals','is_answered','is_blank'],yes_no:['equals','not_equals','is_answered','is_blank'],dropdown:['equals','not_equals','is_answered','is_blank'],radio:['equals','not_equals','is_answered','is_blank'],checkboxes:['contains','not_contains','is_answered','is_blank'],number:['equals','not_equals','greater_than','greater_or_equal','less_than','less_or_equal','is_answered','is_blank'],date:['equals','before','on_or_before','after','on_or_after','is_answered','is_blank'],file:['has_file','has_no_file'],multiple_files:['has_file','has_no_file'],multiple_inputs:['is_answered','is_blank'],addon:['is_selected','is_not_selected','quantity_equals','quantity_greater_than','quantity_less_than']};
+  const labels=value=>value.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
+  const renumber=()=>actions.querySelectorAll('[data-rule-action-row]').forEach((row,index)=>{row.querySelector('[data-action-type]').name=`rule_actions[${index}][action_type]`;row.querySelector('[data-target-field]').name=`rule_actions[${index}][target_field_id]`;row.querySelector('[data-fee-name]').name=`rule_actions[${index}][fee_name]`;row.querySelector('[data-fee-amount]').name=`rule_actions[${index}][fee_amount]`;});
+  const configureAction=row=>{if(row.dataset.configured)return;row.dataset.configured='1';const type=row.querySelector('[data-action-type]'),target=row.querySelector('[data-action-target]'),targetSelect=row.querySelector('[data-target-field]'),fee=row.querySelector('[data-action-fee]'),feeName=row.querySelector('[data-fee-name]'),feeAmount=row.querySelector('[data-fee-amount]');const update=()=>{const priced=type.value==='fee';target.hidden=priced;fee.hidden=!priced;targetSelect.required=!priced;feeName.required=priced;feeAmount.required=priced;[...targetSelect.options].forEach(option=>{option.disabled=option.value===source.value;option.hidden=['required','optional'].includes(type.value)&&option.dataset.structural==='1';});};type.addEventListener('change',update);row.querySelector('[data-remove-rule-action]').addEventListener('click',()=>{row.remove();renumber();});source.addEventListener('change',update);update();};
+  const addAction=()=>{const row=template.content.firstElementChild.cloneNode(true);actions.append(row);configureAction(row);renumber();};
+  const updateSource=()=>{const selected=source.selectedOptions[0],values=operatorMap[selected?.dataset.type]||[];operator.innerHTML='<option value="">Choose a condition</option>'+values.map(value=>`<option value="${value}">${labels(value)}</option>`).join('');options.replaceChildren(...JSON.parse(selected?.dataset.options||'[]').map(value=>{const option=document.createElement('option');option.value=value;return option}));};
+  const updateOperator=()=>comparison.hidden=['is_answered','is_blank','has_file','has_no_file','is_selected','is_not_selected'].includes(operator.value);
+  source.addEventListener('change',updateSource);operator.addEventListener('change',updateOperator);ruleEditor.querySelector('[data-add-rule-action]').addEventListener('click',addAction);updateSource();updateOperator();addAction();
+ }
 })();
 </script>
 <?php include __DIR__ . '/includes/admin-footer.php'; ?>
